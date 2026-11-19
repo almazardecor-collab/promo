@@ -12934,7 +12934,7 @@ const telWa=t=>{let s=telN(t);if(s.startsWith('00'))s=s.slice(2);if(s.startsWith
 
 /* ---------- données ---------- */
 const DEFSET={base:14900,mlBase:10,pMl:600,pVit:800,acPct:75,resH:48,quota:108,rythme:7,liv0:'2026-12-21',arr:1,tolMl:0,
-  barre:250,plCh:10,colleKg:4,blancheKg:1,sintoKg:0.25,patinsT:12,relJ:5,del:{cnc:2,carc:4,tab:4,face:5,plac:6,vern:9,emb:10},sv:6,
+  barre:250,plCh:10,colleKg:4,blancheKg:1,sintoKg:0.25,patinsT:12,relJ:5,del:{cnc:2,carc:4,tab:4,face:5,plac:6,vern:9,emb:10},showrooms:[{id:'s1',nom:'Agadir',adresse:'272 Av. Mohammed V, Dcheira El Jihadia'},{id:'s2',nom:'Casablanca',adresse:'Bd Haïfa'}],sv:6,
   zones:[{id:'z1',nom:'Agadir, Inezgane, Aït Melloul',prix:0},{id:'z2',nom:'Région d’Agadir',prix:0},{id:'z3',nom:'Autre ville',prix:0}],
   marque:'ALMAZARDECOR',adresse:'Showroom Agadir — 272 Av. Mohammed V, Dcheira El Jihadia',tel:'06 47 36 72 72',url:''};
 const LSK='almazar_promo_bois_app_v1';
@@ -12954,6 +12954,12 @@ const cotesMin=(forme,l)=>{const F=+l.fond||0,G=+l.rg||0,D=+l.rd||0;
   if(forme==='U'&&(F<230||G<125||D<125))return 'Cotes trop petites pour un salon en U : le fond doit faire au moins 230 cm et chaque retour au moins 125 cm.';
   if(forme==='L'&&(F<125||G<125))return 'Cotes trop petites pour un salon en L : le fond et le retour doivent faire au moins 125 cm chacun.';
   if(forme==='Droit'&&F<80)return 'Cotes trop petites : un salon droit fait au moins 80 cm.';return '';};
+// showrooms : chaque commande et chaque vendeur est rattaché à un point de vente
+const srList=()=>S.settings.showrooms&&S.settings.showrooms.length?S.settings.showrooms:[{id:'s1',nom:'Agadir',adresse:''}];
+const srOf=o=>srList().find(x=>x.id===(o&&o.sr))||null;
+const srNom=o=>{const x=srOf(o);return x?'Showroom '+x.nom:'';};
+const srAdr=o=>{const x=srOf(o);return x?'Showroom '+x.nom+(x.adresse?' — '+x.adresse:''):S.settings.adresse;};
+const srMe=()=>{const L=srList();return (ME&&L.find(x=>x.id===ME.sr)||L[0]).id;};
 const mlOf=o=>{const l=lgOf(o);return ((+l.fond||0)+(+l.rg||0)+(+l.rd||0))/100;};
 const extraOf=(o,st=S.settings)=>{const x=mlOf(o)-st.mlBase-(+st.tolMl||0),a=Math.max(0.1,+st.arr||1);return x>1e-9?Math.round(Math.ceil(x/a-1e-9)*a*100)/100:0;};
 const zoneOf=(o,st=S.settings)=>st.zones.find(z=>z.id===o.zoneId)||null;
@@ -12974,6 +12980,9 @@ const rangOf=o=>{if(o._rang)return o._rang;const c=confirmees(),i=c.findIndex(x=
 const livBase=o=>{const k=Math.floor((rangOf(o)-1)/Math.max(1,S.settings.rythme));const d=new Date(S.settings.liv0+'T12:00:00');d.setDate(d.getDate()+7*k);return d;};
 const livOf=o=>o.report&&o.report.date?new Date(o.report.date+'T12:00:00'):livBase(o);
 const nextCode=int=>{const n=S.orders.filter(o=>!!o.interne===!!int).reduce((m,o)=>Math.max(m,o.seq||0),0)+1;return {seq:n,code:int?'ESSAI-'+n:'PSM26-'+String(n).padStart(3,'0')};};
+// suppression en deux appuis (pas de fenêtre du navigateur)
+function sur(b,fn){if(b.dataset.sur)return fn();b.dataset.sur='1';const t=b.textContent;b.textContent='Confirmer ?';setTimeout(()=>{if(b.isConnected&&b.dataset.sur){delete b.dataset.sur;b.textContent=t;}},4000);}
+const zonesOk=()=>S.settings.zones.filter(z=>!z.off);
 const userOf=id=>S.users.find(u=>u.id===id)||{nom:'—'};
 const isG=()=>ME&&ME.role==='gerant';const isOp=()=>ME&&ME.role==='op';const home=()=>isG()?'dash':isOp()?'op':'list';
 const suiviUrl=o=>{const b=(S.settings.url||'').trim()||(location.origin+location.pathname);return b+(b.includes('?')?'&':'?')+'s='+encodeURIComponent(o.code);};
@@ -13012,7 +13021,7 @@ function vLogin(){
   const sub=()=>{const tel=telN($('lT').value),pin=$('lP').value.trim();
     if(ONLINE){if(tel.length<9||!/^\d{4}$/.test(pin)){$('lE').textContent='Téléphone ou code incorrect.';$('lE').hidden=false;return;}$('lB').disabled=true;
       Net.login(tel,pin).then(r=>{if(r.err){const b=$('lB');if(b)b.disabled=false;const m=$('lE');if(m){m.textContent=r.err==='lock'?'Trop d’essais : ce compte est bloqué '+(r.min||10)+' minutes.':r.err==='net'?'Pas de connexion. Réessaie.':'Téléphone ou code incorrect.';m.hidden=false;}}});return;}
-    const u=S.users.find(x=>x.actif!==false&&telN(x.tel).slice(-9)===tel.slice(-9)&&x.pin===pin&&tel.length>=9);
+    const u=S.users.find(x=>x.actif!==false&&!x.suppr&&telN(x.tel).slice(-9)===tel.slice(-9)&&x.pin===pin&&tel.length>=9);
     if(!u){$('lE').textContent='Téléphone ou code incorrect.';$('lE').hidden=false;return;}ME=u;sessSet(u.id);afterLogin();};
   $('lB').onclick=sub;$('lP').onkeydown=e=>{if(e.key==='Enter')sub();};}
 
@@ -13031,35 +13040,39 @@ function vDash(){const st=S.settings,C=confirmees(),R=S.orders.filter(o=>statut(
    <div class="card"><h2>À faire</h2><div class="kpi">
     <div><span>Cotes à relever</span><strong class="${relT?'neg':''}">${aRel}${relT?' · '+relT+' en retard':''}</strong></div><div><span>À valider pour la production</span><strong>${aVal}</strong></div>
     <div><span>Réservations expirées</span><strong class="${S.orders.some(o=>statut(o)==='exp')?'neg':''}">${S.orders.filter(o=>statut(o)==='exp').length}</strong></div></div></div>
-   ${prodDash()}${delaisDash()}<div class="card"><h2>Par vendeur</h2>${V.length?`<table><thead><tr><th>Vendeur</th><th class="n">Confirmées</th><th class="n">CA</th><th class="n">Encaissé</th></tr></thead><tbody>${V.map(u=>{const c=C.filter(o=>o.vendeurId===u.id);
+   ${prodDash()}${delaisDash()}${srList().length>1?`<div class="card"><h2>Par showroom</h2><table><thead><tr><th>Showroom</th><th class="n">Confirmées</th><th class="n">CA</th><th class="n">Encaissé</th></tr></thead><tbody>${[...srList(),{id:'',nom:'Sans showroom'}].map(x=>{const c=C.filter(o=>(o.sr||'')===x.id&&!o.interne),e=S.orders.filter(o=>(o.sr||'')===x.id&&!o.annule&&!o.interne).reduce((s,o)=>s+payeOf(o),0);return x.id||c.length||e?`<tr><td>${esc(x.nom)}</td><td class="n">${c.length}</td><td class="n">${fmt(c.reduce((s,o)=>s+totalOf(o),0))}</td><td class="n">${fmt(e)}</td></tr>`:'';}).join('')}</tbody></table></div>`:''}<div class="card"><h2>Par vendeur</h2>${V.length?`<table><thead><tr><th>Vendeur</th><th class="n">Confirmées</th><th class="n">CA</th><th class="n">Encaissé</th></tr></thead><tbody>${V.map(u=>{const c=C.filter(o=>o.vendeurId===u.id);
      return `<tr><td>${esc(u.nom)}</td><td class="n">${c.length}</td><td class="n">${fmt(c.reduce((s,o)=>s+totalOf(o),0))}</td><td class="n">${fmt(S.orders.filter(o=>o.vendeurId===u.id&&!o.annule).reduce((s,o)=>s+payeOf(o),0))}</td></tr>`;}).join('')}</tbody></table>`:'<p class="muted">Aucune commande pour l’instant.</p>'}</div>
    <div class="row"><button class="btn" id="bCsv">Exporter les commandes (CSV)</button></div>`);
-  $('bCsv').onclick=()=>{const H=['Code','Statut','Date','Vendeur','Canal','Client','Téléphone','Ville','Quartier','ml','ml en plus','Vitres','Transport','Remise','Total','Encaissé','Reste','Rang','Livraison prévue'];
-    const L=S.orders.map(o=>[o.code,ST[statut(o)],fdt(o.createdAt),userOf(o.vendeurId).nom,o.canal,o.client.nom,o.client.tel,o.client.ville,o.client.quartier,mlOf(o),extraOf(o),o.vitres?'oui':'non',(zoneOf(o)||{}).prix||0,o.remise||0,totalOf(o),payeOf(o),resteOf(o),o.confirmedAt?rangOf(o):'',o.confirmedAt?fdate(livOf(o)):'']);
+  $('bCsv').onclick=()=>{const H=['Code','Statut','Date','Vendeur','Showroom','Canal','Client','Téléphone','Ville','Quartier','ml','ml en plus','Vitres','Transport','Remise','Total','Encaissé','Reste','Rang','Livraison prévue'];
+    const L=S.orders.map(o=>[o.code,ST[statut(o)],fdt(o.createdAt),userOf(o.vendeurId).nom,(srOf(o)||{nom:''}).nom,o.canal,o.client.nom,o.client.tel,o.client.ville,o.client.quartier,mlOf(o),extraOf(o),o.vitres?'oui':'non',(zoneOf(o)||{}).prix||0,o.remise||0,totalOf(o),payeOf(o),resteOf(o),o.confirmedAt?rangOf(o):'',o.confirmedAt?fdate(livOf(o)):'']);
     saveFile('commandes-promo-bois-'+new Date().toISOString().slice(0,10)+'.csv','﻿'+[H,...L].map(r=>r.map(c=>'"'+String(c??'').replace(/"/g,'""')+'"').join(';')).join('\r\n'),'text/csv');};}
 
 /* ---------- liste ---------- */
-function vList(){if(isOp())return go('op');const mine=isG()?S.orders:S.orders.filter(o=>o.vendeurId===ME.id);const q=Q.trim().toLowerCase();
+function vList(){if(isOp())return go('op');let mine=isG()?S.orders:S.orders.filter(o=>o.vendeurId===ME.id);if(isG()&&FSR!=='tous')mine=mine.filter(o=>(o.sr||'')===FSR);const q=Q.trim().toLowerCase();
   let L=mine.filter(o=>FIL==='tous'||statut(o)===FIL).filter(o=>!q||[o.code,o.client.nom,o.client.tel,o.client.ville].join(' ').toLowerCase().includes(q)).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
   const chips=[['tous','Toutes'],['res','Réservées'],['conf','Confirmées'],['cot','Cotes relevées'],['val','Validées'],['exp','Expirées'],['ann','Annulées']];
   shell('Promo Salon <b>Bois</b>',isG()?'Toutes les commandes':'Mes commandes',`<input type="text" id="q" placeholder="Chercher : nom, téléphone, code, ville" value="${esc(Q)}" aria-label="Chercher une commande" style="margin-bottom:8px">
+   ${isG()&&srList().length>1?`<div class="chips">${[['tous','Tous les showrooms'],...srList().map(x=>[x.id,x.nom])].map(([k,l])=>`<button data-fs="${k}" aria-pressed="${FSR===k}">${esc(l)}</button>`).join('')}</div>`:''}
    <div class="chips">${chips.map(([k,l])=>`<button data-f="${k}" aria-pressed="${FIL===k}">${l} (${k==='tous'?mine.length:mine.filter(o=>statut(o)===k).length})</button>`).join('')}</div>
    ${L.length?L.map(o=>{const s=statut(o);return `<button class="it" data-o="${o.id}"><span class="l1"><span>${esc(o.client.nom)} <span class="n muted">${o.code}</span></span><span>${relTard(o)?'<span class="tag exp">Relevé en retard</span> ':''}${tagH(s)}</span></span>
-     <span class="l2"><span>${esc(o.client.ville||'')} · ${fmt(mlOf(o),1)} ml${isG()?' · '+esc(userOf(o.vendeurId).nom):''}</span><span class="n">${o.interne?'showroom':fmt(payeOf(o))+' / '+fmt(totalOf(o))+' DH'}</span></span></button>`;}).join(''):'<p class="muted">Aucune commande.</p>'}`);
+     <span class="l2"><span>${esc(o.client.ville||'')} · ${fmt(mlOf(o),1)} ml${isG()?' · '+esc(userOf(o.vendeurId).nom)+(srOf(o)?' · '+esc(srOf(o).nom):''):''}</span><span class="n">${o.interne?'showroom':fmt(payeOf(o))+' / '+fmt(totalOf(o))+' DH'}</span></span></button>`;}).join(''):'<p class="muted">Aucune commande.</p>'}`);
   $('q').oninput=e=>{Q=e.target.value;const p=e.target.selectionStart;vList();const el=$('q');el.focus();el.setSelectionRange(p,p);};
   document.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{FIL=b.dataset.f;vList();});
+  document.querySelectorAll('[data-fs]').forEach(b=>b.onclick=()=>{FSR=b.dataset.fs;vList();});
   document.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>go('ord',b.dataset.o));}
 
 /* ---------- nouvelle commande ---------- */
 let DRAFT=null;
-const newDraft=()=>({interne:false,canal:'Showroom',client:{nom:'',tel:'',ville:'',quartier:''},forme:'U',lg:{fond:'',rg:'',rd:''},vitres:false,zoneId:S.settings.zones[0]?.id||'',remise:0,remiseMotif:'',notes:''});
+const newDraft=()=>({interne:false,canal:'Showroom',client:{nom:'',tel:'',ville:'',quartier:''},forme:'U',lg:{fond:'',rg:'',rd:''},vitres:false,zoneId:zonesOk()[0]?.id||'',remise:0,remiseMotif:'',notes:'',sr:srMe()});
+let FSR='tous';
 function vNew(){if(isOp())return go('op');const st=S.settings;if(!DRAFT)DRAFT=newDraft();const d=DRAFT;const plein=actives().length>=st.quota;
   if(plein&&!isG()){shell('Promo Salon <b>Bois</b>','Nouvelle commande',`<div class="msg err">Les ventes sont fermées : les ${st.quota} salons sont pris.</div>`);return;}
   if(plein)d.interne=true;if(!isG())d.interne=false;const I=d.interne;
   const seg=(k,vals,cur)=>`<div class="seg" role="group">${vals.map(v=>`<button type="button" data-seg="${k}" data-v="${esc(v)}" aria-pressed="${cur===v}">${esc(v)}</button>`).join('')}</div>`;
   shell('Promo Salon <b>Bois</b>',I?'Nouvelle commande showroom':'Nouvelle commande',`${plein?`<div class="msg err">Les ventes sont fermées : les ${st.quota} salons sont pris. Seules les commandes showroom restent possibles.</div>`:''}
    <div class="card"><h2>${I?'Showroom':'Client'}</h2>${isG()&&!plein?`<label class="f">Type de commande</label>${seg('type',['Client','Showroom (essai)'],I?'Showroom (essai)':'Client')}`:''}
-    <label class="f" for="cN">${I?'Nom (ex. Showroom Casablanca)':'Nom et prénom'}</label><input type="text" id="cN" value="${esc(d.client.nom)}" autocomplete="off">
+    <label class="f">Point de vente</label>${isG()?`<div class="seg" role="group">${srList().map(x=>`<button type="button" data-sr="${x.id}" aria-pressed="${d.sr===x.id}">Showroom ${esc(x.nom)}</button>`).join('')}</div>`:`<p style="margin:0"><b>${esc(srNom({sr:srMe()}))}</b></p>`}
+    <label class="f" for="cN">${I?'Nom (vide = nom du showroom)':'Nom et prénom'}</label><input type="text" id="cN" value="${esc(d.client.nom)}" autocomplete="off">
     ${I?`<label class="f" for="cV">Ville</label><input type="text" id="cV" value="${esc(d.client.ville)}"><p class="muted" style="font-size:.85rem;margin:6px 0 0">Commande pour le showroom : sans paiement, hors des ${st.quota} salons de la promo.</p>`:`<label class="f" for="cT">Téléphone WhatsApp</label><input type="tel" id="cT" inputmode="tel" value="${esc(d.client.tel)}">
     <div class="g2"><div><label class="f" for="cV">Ville</label><input type="text" id="cV" value="${esc(d.client.ville)}"></div><div><label class="f" for="cQ">Quartier</label><input type="text" id="cQ" value="${esc(d.client.quartier)}"></div></div>
     <label class="f">Commande prise par</label>${seg('canal',['Showroom','Live','WhatsApp'],d.canal)}`}</div>
@@ -13070,7 +13083,7 @@ function vNew(){if(isOp())return go('op');const st=S.settings;if(!DRAFT)DRAFT=ne
      <div><label class="f" for="lD">Retour droit</label><input type="number" class="num" id="lD" inputmode="numeric" value="${esc(d.lg.rd)}" ${d.forme!=='U'?'disabled':''}></div></div>
     ${I?'':'<p class="muted" style="font-size:.85rem;margin:6px 0 0">Les cotes exactes seront relevées chez le client. Le prix est recalculé si le métrage change. Au-delà du métrage compris, tout mètre commencé est compté en entier.</p>'}</div>
    ${I?`<div class="card"><h2>Remarques</h2><textarea id="oN" rows="2" aria-label="Remarques">${esc(d.notes)}</textarea></div>`:`<div class="card"><h2>Options</h2><label class="row" style="min-height:44px"><input type="checkbox" id="oV" ${d.vitres?'checked':''} style="width:22px;height:22px"> Vitres de protection, table + 2 guéridons (${dh(st.pVit)})</label>
-    <label class="f" for="oZ">Transport</label><select id="oZ">${st.zones.map(z=>`<option value="${z.id}" ${d.zoneId===z.id?'selected':''}>${esc(z.nom)} — ${+z.prix?dh(z.prix):'compris'}</option>`).join('')}</select>
+    <label class="f" for="oZ">Transport</label><select id="oZ">${st.zones.filter(z=>!z.off||z.id===d.zoneId).map(z=>`<option value="${z.id}" ${d.zoneId===z.id?'selected':''}>${esc(z.nom)} — ${+z.prix?dh(z.prix):'compris'}</option>`).join('')}</select>
     <div class="g2"><div><label class="f" for="oR">Remise (DH)</label><input type="number" class="num" id="oR" inputmode="numeric" value="${d.remise||''}"></div><div><label class="f" for="oP">Code du gérant</label><input type="password" id="oP" inputmode="numeric" maxlength="4" placeholder="pour une remise"></div></div>
     <label class="f" for="oN">Remarques</label><textarea id="oN" rows="2">${esc(d.notes)}</textarea></div>
    <div class="card"><h2>Prix</h2><div id="sum"></div></div>`}<p id="nE" class="msg err" hidden></p>
@@ -13082,12 +13095,14 @@ function vNew(){if(isOp())return go('op');const st=S.settings;if(!DRAFT)DRAFT=ne
     <tr class="tot"><td>Total (${fmt(mlOf(d),2)} ml)</td><td class="n">${dh(t)}</td></tr><tr><td>Acompte de ${st.acPct} % pour confirmer</td><td class="n">${dh(acDu(d))}</td></tr></tbody></table>`;
     $('bar').innerHTML=`<span>Total <b class="big">${dh(t)}</b></span><span class="muted">acompte ${dh(acDu(d))}</span>`;};
   document.querySelectorAll('.app input,.app select,.app textarea').forEach(el=>el.addEventListener('input',sm));
+  document.querySelectorAll('[data-sr]').forEach(b=>b.onclick=()=>{rd();d.sr=b.dataset.sr;vNew();});
   document.querySelectorAll('[data-seg]').forEach(b=>b.onclick=()=>{rd();if(b.dataset.seg==='type')d.interne=b.dataset.v!=='Client';else d[b.dataset.seg]=b.dataset.v;vNew();});sm();
   $('bSave').onclick=async()=>{rd();const GP=$('oP')?$('oP').value.trim():'';const e=$('nE'),err=t=>{e.textContent=t;e.hidden=false;e.scrollIntoView({block:'center'});};
+    if(!isG()||!srOf(d))d.sr=srMe();if(I&&!d.client.nom.trim())d.client.nom=srNom(d);if(I&&!d.client.ville.trim())d.client.ville=srOf(d).nom;
     if(!d.client.nom.trim())return err(I?'Le nom du showroom est obligatoire.':'Le nom du client est obligatoire.');if(!I&&telN(d.client.tel).length<9)return err('Le téléphone WhatsApp du client est obligatoire.');
     if(!(+d.lg.fond>0))return err('Indique au moins la longueur du fond.');
     if(cotesMin(d.forme,d.lg))return err(cotesMin(d.forme,d.lg));
-    if(I){const c=nextCode(true),now=new Date().toISOString(),o={id:uid(),...c,createdAt:now,vendeurId:ME.id,interne:true,canal:'Showroom',client:{nom:d.client.nom.trim(),tel:'',ville:d.client.ville,quartier:''},forme:d.forme,lg:{...d.lg},vitres:false,zoneId:'',remise:0,remiseMotif:'',notes:d.notes,pays:[],releve:{...d.lg,notes:d.notes,date:now,par:ME.id}};
+    if(I){const c=nextCode(true),now=new Date().toISOString(),o={id:uid(),...c,createdAt:now,vendeurId:ME.id,interne:true,sr:d.sr,canal:'Showroom',client:{nom:d.client.nom.trim(),tel:'',ville:d.client.ville,quartier:''},forme:d.forme,lg:{...d.lg},vitres:false,zoneId:'',remise:0,remiseMotif:'',notes:d.notes,pays:[],releve:{...d.lg,notes:d.notes,date:now,par:ME.id}};
       if(!(await addOrder(o,GP,err)))return;DRAFT=null;flash('Commande showroom '+o.code+' enregistrée. Valide-la pour la production.');return go('ord',o.id);}
     if(d.remise>0&&!ONLINE&&!S.users.some(u=>u.role==='gerant'&&u.pin===GP))return err('Remise refusée : il faut le code du gérant.');
     if(d.remise>0)d.remiseMotif='accordée par le gérant';
@@ -13103,7 +13118,7 @@ function vOrd(){if(isOp())return go('op');const o=S.orders.find(x=>x.id===ARG);i
   const hExp=o.confirmedAt||o.interne?'':`<div class="msg ${s==='exp'?'err':''}">${s==='exp'?'Réservation expirée : plus de '+st.resH+' h sans acompte.':'Réservée jusqu’au '+fdt(new Date(new Date(o.createdAt).getTime()+st.resH*3600e3))+'.'} Il manque ${dh(Math.max(0,ad-p))} pour confirmer.</div>`;
   const canPay=s!=='ann'&&!o.interne,cncFait=!!(o.prod&&o.prod.steps&&o.prod.steps.cnc),canRel=(!!o.confirmedAt||!!o.interne)&&s!=='ann'&&(s!=='val'||(isG()&&!cncFait));
   shell(`${esc(o.client.nom)}`,`${o.code} · ${tagH(s)}`,`${hExp}
-   <div class="card"><h2>Commande</h2><p style="margin:0 0 6px">${esc(o.client.tel)} · ${esc([o.client.ville,o.client.quartier].filter(Boolean).join(', '))}<br><span class="muted">${esc(o.canal)} · ${esc(userOf(o.vendeurId).nom)} · ${fdt(o.createdAt)}</span></p>
+   <div class="card"><h2>Commande</h2><p style="margin:0 0 6px">${esc(o.client.tel)} · ${esc([o.client.ville,o.client.quartier].filter(Boolean).join(', '))}<br><span class="muted">${srNom(o)?esc(srNom(o))+' · ':''}${o.canal==='Showroom'&&srNom(o)?'':esc(o.canal)+' · '}${esc(userOf(o.vendeurId).nom)} · ${fdt(o.createdAt)}</span></p>${isG()&&srList().length>1?`<div style="max-width:260px;margin:0 0 8px"><label class="f" for="oSr">Point de vente</label><select id="oSr">${srOf(o)?'':'<option value="">à choisir</option>'}${srList().map(x=>`<option value="${x.id}" ${o.sr===x.id?'selected':''}>Showroom ${esc(x.nom)}</option>`).join('')}</select></div>`:''}
     <p style="margin:0 0 6px">Forme ${esc(o.forme)} · ${o.releve?'cotes relevées':'longueurs annoncées'} : fond ${fmt(lgOf(o).fond||0)}${lgOf(o).rg?' · gauche '+fmt(lgOf(o).rg):''}${lgOf(o).rd?' · droit '+fmt(lgOf(o).rd):''} cm = <b>${fmt(mlOf(o),2)} ml</b></p>
     <table><tbody>${L.map(([l,m])=>`<tr><td>${esc(l)}</td><td class="n">${fmt(m)}</td></tr>`).join('')}<tr class="tot"><td>Total</td><td class="n">${dh(t)}</td></tr>
      <tr><td>Encaissé</td><td class="n pos">${dh(p)}</td></tr><tr><td>Reste à payer</td><td class="n">${dh(t-p)}</td></tr></tbody></table>
@@ -13135,7 +13150,7 @@ function vOrd(){if(isOp())return go('op');const o=S.orders.find(x=>x.id===ARG);i
     if(!(+r.fond>0)){flash('Indique au moins la cote du fond.','err');return vOrd();}if(cotesMin(o.forme,r)){flash(cotesMin(o.forme,r),'err');return vOrd();}const t0=totalOf(o);o.releve=r;Store.save();const t1=totalOf(o);
     if(o.lotId&&ONLINE)Fab.prepare([o.id]).then(x=>{if(VIEW!=='ord'||ARG!==o.id)return;if(x.ko.length)flash('Cotes enregistrées, mais fiches non recalculées : '+fabErr(x.ko[0][1])+'.','err');else flash('Cotes corrigées : les fiches de fabrication du salon '+court(o)+' sont recalculées.');vOrd();});
     flash('Relevé enregistré.'+(t1!==t0?' Le total passe de '+dh(t0)+' à '+dh(t1)+'.':' Le prix ne change pas.'));vOrd();};
-  reportBind(o);
+  reportBind(o);if($('oSr'))$('oSr').onchange=()=>{if(!$('oSr').value)return;o.sr=$('oSr').value;Store.save();flash('Commande rattachée au '+srNom(o)+'.');vOrd();};
   if($('bVal'))$('bVal').onclick=()=>{o.valideAt=new Date().toISOString();o.validePar=ME.id;Store.save();flash('Commande validée pour la production. Lance-la dans un lot depuis l’onglet Production.');vOrd();};
   if($('bAnn'))$('bAnn').onclick=e=>{const b=e.currentTarget;if(!b.dataset.armed){b.dataset.armed='1';b.textContent='Confirmer l’annulation';return;}
     o.annule={at:new Date().toISOString(),par:ME.id,motif:o.confirmedAt?'annulée par le gérant':'réservation annulée'};Store.save();flash('Commande annulée.');vOrd();};
@@ -13158,7 +13173,7 @@ function bonPdf(o){const {jsPDF}=window.jspdf,d=new jsPDF({unit:'mm',format:'a4'
   const cl=t=>String(t).replace(/[\u2019\u2018]/g,"'").replace(/[\u2014\u2013]/g,'-').replace(/\u2022/g,'-').replace(/\u0153/g,'oe').replace(/\u2026/g,'...').replace(/[\u202f\u00a0]/g,' ');
   const T=(t,x,yy,o2={})=>{d.setFont('helvetica',o2.b?'bold':'normal');d.setFontSize(o2.s||10);d.setTextColor(...(o2.c||[29,37,35]));d.text(Array.isArray(t)?t.map(cl):cl(t),x,yy,{align:o2.a||'left',maxWidth:o2.w});};
   T(st.marque,M,y,{b:1,s:18,c:[31,95,139]});T('BON DE COMMANDE',W-M,y,{b:1,s:13,a:'right'});y+=6;
-  T(st.adresse,M,y,{s:9,c:[93,105,102]});T(o.code,W-M,y,{b:1,s:12,a:'right',c:[31,95,139]});y+=4.5;
+  T(srAdr(o),M,y,{s:9,c:[93,105,102]});T(o.code,W-M,y,{b:1,s:12,a:'right',c:[31,95,139]});y+=4.5;
   T('WhatsApp : '+st.tel,M,y,{s:9,c:[93,105,102]});T('Date : '+fdate(o.createdAt),W-M,y,{s:9,a:'right',c:[93,105,102]});y+=5;d.setDrawColor(207,214,211);d.line(M,y,W-M,y);y+=7;
   try{const qr=qrcode(0,'M');qr.addData(suiviUrl(o));qr.make();const n=qr.getModuleCount(),sz=30,c=sz/n,x0=W-M-sz,y0=y-2;d.setFillColor(29,37,35);for(let r=0;r<n;r++)for(let k=0;k<n;k++)if(qr.isDark(r,k))d.rect(x0+k*c,y0+r*c,c+0.02,c+0.02,'F');T('Scannez pour suivre',x0+sz/2,y0+sz+4,{s:8,a:'center',c:[93,105,102]});T('votre commande',x0+sz/2,y0+sz+7.5,{s:8,a:'center',c:[93,105,102]});}catch(e){}
   T('CLIENT',M,y,{b:1,s:8,c:[31,95,139]});y+=5;T(o.client.nom,M,y,{b:1,s:12});y+=5.5;T('Téléphone : '+o.client.tel,M,y);y+=5;T([o.client.ville,o.client.quartier].filter(Boolean).join(', ')||'—',M,y);y+=5;
@@ -13185,25 +13200,34 @@ function vSet(){if(!isG())return go('list');const st=S.settings;
    <div class="card"><h2>Délais</h2><p class="muted" style="font-size:.85rem;margin:0 0 6px">Jours travaillés : du lundi au samedi (le samedi, la journée finit à 15 h). Chaque étape doit être finie tant de jours travaillés après le lancement du lot. Les lots déjà lancés gardent leurs dates.</p>
     <div class="g2">${STEPS.map(x=>`<div><label class="f" for="d_${x.k}">${x.lab} (jours)</label><input type="number" class="num" id="d_${x.k}" data-del="${x.k}" min="1" max="60" step="1" value="${delSet()[x.k]}"></div>`).join('')}${num('relJ','Relevé des cotes après l’acompte (jours)','jours')}</div></div>
    <div class="card"><h2>Achats par salon</h2><div class="g2">${num('barre','Barres de face reçues (cm)','cm')}${num('plCh','Chutes de placage (%)','%')}${num('colleKg','Colle de placage par salon (kg)','kg')}${num('blancheKg','Colle blanche à bois par salon (kg)','kg')}${num('sintoKg','Sintofer de rebouchage par salon (kg)','kg')}${num('patinsT','Patins de table et guéridons par salon','patins')}</div></div>
-   <div class="card"><h2>Transport par zone</h2><div id="zs">${st.zones.map((z,i)=>`<div class="row" style="margin-bottom:6px"><input type="text" data-z="${i}" data-zk="nom" value="${esc(z.nom)}" aria-label="Nom de la zone ${i+1}" style="flex:2 1 160px"><input type="number" class="num" data-z="${i}" data-zk="prix" value="${z.prix}" aria-label="Prix du transport zone ${i+1} (DH)" style="flex:1 1 80px"><button class="btn sm bad" data-zd="${i}" aria-label="Supprimer la zone ${i+1}">×</button></div>`).join('')}</div><button class="btn sm" id="zAdd">Ajouter une zone</button></div>
-   <div class="card"><h2>Équipe</h2><table><tbody>${S.users.map(u=>`<tr><td>${esc(u.nom)}<br><span class="muted">${esc(u.tel)} · ${roleLab(u)}${u.actif===false?' · désactivé':''}</span></td><td class="n">${u.id!==ME.id?`<button class="btn sm" data-ut="${u.id}">${u.actif===false?'Réactiver':'Désactiver'}</button>`:''}</td></tr>`).join('')}</tbody></table>
+   <div class="card"><h2>Transport par zone</h2><div id="zs">${st.zones.map((z,i)=>z.off?'':`<div class="row" style="margin-bottom:6px"><input type="text" data-z="${i}" data-zk="nom" value="${esc(z.nom)}" aria-label="Nom de la zone ${i+1}" style="flex:2 1 160px"><input type="number" class="num" data-z="${i}" data-zk="prix" value="${z.prix}" aria-label="Prix du transport zone ${i+1} (DH)" style="flex:1 1 80px"><button class="btn sm bad" data-zd="${i}">Supprimer</button></div>`).join('')}</div><button class="btn sm" id="zAdd">Ajouter une zone</button></div>
+   <div class="card"><h2>Équipe</h2><table><tbody>${S.users.filter(u=>!u.suppr).map(u=>`<tr><td>${esc(u.nom)}<br><span class="muted">${esc(u.tel)} · ${roleLab(u)}${u.actif===false?' · désactivé':''}</span>${u.role==='vendeur'&&srList().length>1?`<br><select data-usr="${u.id}" aria-label="Showroom de ${esc(u.nom)}" style="margin-top:4px;max-width:220px">${srList().find(x=>x.id===u.sr)?'':'<option value="">Showroom à choisir</option>'}${srList().map(x=>`<option value="${x.id}" ${u.sr===x.id?'selected':''}>${esc(x.nom)}</option>`).join('')}</select>`:''}</td><td class="n">${u.id!==ME.id?`<button class="btn sm" data-ut="${u.id}">${u.actif===false?'Réactiver':'Désactiver'}</button> <button class="btn sm bad" data-ux="${u.id}">Supprimer</button>`:''}</td></tr>`).join('')}</tbody></table>
     <label class="f" for="uR">Ajouter une personne</label><select id="uR"><option value="vendeur">Vendeur</option><option value="op">Opérateur atelier</option></select>
+    <div id="uSb"><label class="f" for="uS">Showroom du vendeur</label><select id="uS">${srList().map(x=>`<option value="${x.id}">Showroom ${esc(x.nom)}</option>`).join('')}</select></div>
     <div class="g3" style="margin-top:8px"><input type="text" id="uN" placeholder="Nom" aria-label="Nom"><input type="tel" id="uT" placeholder="Téléphone" aria-label="Téléphone"><input type="text" id="uP" placeholder="Code 4 chiffres" inputmode="numeric" maxlength="4" aria-label="Code à 4 chiffres"></div>
     <div id="uPo" hidden><label class="f">Postes de l’opérateur (le premier coché passe en premier dans sa liste)</label>${POSTES.map(p=>`<label class="row" style="min-height:40px"><input type="checkbox" data-po="${p.k}" style="width:22px;height:22px"> ${p.lab}</label>`).join('')}</div>
     <button class="btn sm" id="uAdd" style="margin-top:8px">Ajouter</button></div>
-   <div class="card"><h2>Bon de commande</h2><label class="f" for="s_marque">Nom affiché</label><input type="text" id="s_marque" data-k="marque" value="${esc(st.marque)}"><label class="f" for="s_adresse">Adresse affichée (jamais celle de l’atelier)</label><input type="text" id="s_adresse" data-k="adresse" value="${esc(st.adresse)}"><label class="f" for="s_tel">WhatsApp affiché</label><input type="text" id="s_tel" data-k="tel" value="${esc(st.tel)}"></div>
+   <div class="card"><h2>Bon de commande</h2><label class="f" for="s_marque">Nom affiché</label><input type="text" id="s_marque" data-k="marque" value="${esc(st.marque)}"><label class="f">Showrooms : nom et adresse affichés sur le bon (jamais l’adresse de l’atelier)</label>${srList().map((x,i)=>`<div class="row" style="margin-bottom:6px"><input type="text" data-srk="nom" data-sri="${i}" value="${esc(x.nom)}" aria-label="Nom du showroom ${i+1}" style="flex:1 1 110px"><input type="text" data-srk="adresse" data-sri="${i}" value="${esc(x.adresse||'')}" aria-label="Adresse du showroom ${i+1}" style="flex:3 1 200px">${srList().length>1?`<button class="btn sm bad" data-srd="${x.id}">Supprimer</button>`:''}</div>`).join('')}<button class="btn sm" id="srAdd">Ajouter un showroom</button><label class="f" for="s_tel">WhatsApp affiché</label><input type="text" id="s_tel" data-k="tel" value="${esc(st.tel)}"></div>
    <div class="card"><h2>Essais</h2><div class="row">${ONLINE?'':'<button class="btn sm" id="bEx">Charger des commandes d’exemple</button>'}<button class="btn sm bad" id="bRaz">Effacer toutes les commandes</button></div></div>`);
+  document.querySelectorAll('[data-srk]').forEach(el=>el.onchange=()=>{const L=JSON.parse(JSON.stringify(srList()));L[+el.dataset.sri][el.dataset.srk]=el.value.trim();if(!L[+el.dataset.sri].nom){flash('Le nom du showroom est obligatoire.','err');return vSet();}st.showrooms=L;Store.save();});
+  document.querySelectorAll('[data-srd]').forEach(b=>b.onclick=()=>sur(b,()=>{const id=b.dataset.srd,nc=S.orders.filter(o=>o.sr===id).length,nv=S.users.filter(u=>!u.suppr&&u.role==='vendeur'&&u.sr===id).length;
+    if(nc||nv){flash('Showroom encore utilisé : '+[nc?nc+' commande'+(nc>1?'s':''):'',nv?nv+' vendeur'+(nv>1?'s':''):''].filter(Boolean).join(' et ')+'. Rattache-les d’abord à un autre showroom.','err');return vSet();}
+    st.showrooms=JSON.parse(JSON.stringify(srList())).filter(x=>x.id!==id);if(FSR===id)FSR='tous';Store.save();flash('Showroom supprimé.');vSet();}));
+  $('srAdd').onclick=()=>{st.showrooms=[...JSON.parse(JSON.stringify(srList())),{id:'s'+uid(),nom:'Nouveau showroom',adresse:''}];Store.save();vSet();};
+  document.querySelectorAll('[data-usr]').forEach(el=>el.onchange=()=>{const u=S.users.find(x=>x.id===el.dataset.usr);u.sr=el.value;Store.save();vSet();});
   document.querySelectorAll('[data-del]').forEach(el=>el.onchange=()=>{st.del={...delSet(),[el.dataset.del]:Math.min(60,Math.max(1,Math.round(+el.value)||1))};Store.save();vSet();});
   document.querySelectorAll('[data-k]').forEach(el=>el.onchange=()=>{const k=el.dataset.k;st[k]=el.type==='number'?(+el.value||0):el.value;Store.save();});
   document.querySelectorAll('[data-z]').forEach(el=>el.onchange=()=>{st.zones[+el.dataset.z][el.dataset.zk]=el.dataset.zk==='prix'?(+el.value||0):el.value;Store.save();});
-  document.querySelectorAll('[data-zd]').forEach(b=>b.onclick=()=>{const z=st.zones[+b.dataset.zd];if(S.orders.some(o=>o.zoneId===z.id)){flash('Zone utilisée par une commande : elle ne peut pas être supprimée.','err');return vSet();}st.zones.splice(+b.dataset.zd,1);Store.save();vSet();});
+  document.querySelectorAll('[data-zd]').forEach(b=>b.onclick=()=>sur(b,()=>{const z=st.zones[+b.dataset.zd];if(zonesOk().length<2){flash('Il faut garder au moins une zone de transport.','err');return vSet();}
+    const pris=S.orders.some(o=>o.zoneId===z.id);if(pris)z.off=true;else st.zones.splice(+b.dataset.zd,1);Store.save();flash('Zone supprimée.'+(pris?' Les commandes déjà saisies gardent leur prix de transport.':''));vSet();}));
   $('zAdd').onclick=()=>{st.zones.push({id:'z'+uid(),nom:'Nouvelle zone',prix:0});Store.save();vSet();};
   document.querySelectorAll('[data-ut]').forEach(b=>b.onclick=()=>{const u=S.users.find(x=>x.id===b.dataset.ut);u.actif=u.actif===false;Store.save();vSet();});
-  $('uR').onchange=()=>{$('uPo').hidden=$('uR').value!=='op';};
+  document.querySelectorAll('[data-ux]').forEach(b=>b.onclick=()=>sur(b,()=>{const u=S.users.find(x=>x.id===b.dataset.ux);u.actif=false;u.suppr=true;Store.save();flash(u.nom+' est supprimé de l’équipe.');vSet();}));
+  $('uR').onchange=()=>{$('uPo').hidden=$('uR').value!=='op';$('uSb').hidden=$('uR').value==='op';};
   $('uAdd').onclick=()=>{const nom=$('uN').value.trim(),tel=telN($('uT').value),pin=$('uP').value.trim(),role=$('uR').value;if(!nom||tel.length<9||!/^\d{4}$/.test(pin)){flash('Nom, téléphone et code à 4 chiffres obligatoires.','err');return vSet();}
-    if(S.users.some(u=>telN(u.tel).slice(-9)===tel.slice(-9))){flash('Ce téléphone a déjà un compte.','err');return vSet();}
+    if(S.users.some(u=>!u.suppr&&telN(u.tel).slice(-9)===tel.slice(-9))){flash('Ce téléphone a déjà un compte.','err');return vSet();}
     const postes=[...document.querySelectorAll('[data-po]:checked')].map(c=>c.dataset.po);if(role==='op'&&!postes.length){flash('Coche au moins un poste pour l’opérateur.','err');return vSet();}
-    S.users.push({id:uid(),nom,tel,pin,role,actif:true,...(role==='op'?{postes}:{})});Store.save();flash((role==='op'?'Opérateur':'Vendeur')+' ajouté : '+nom+'.');vSet();};
+    S.users.push({id:uid(),nom,tel,pin,role,actif:true,...(role==='op'?{postes}:{sr:$('uS').value})});Store.save();flash((role==='op'?'Opérateur':'Vendeur')+' ajouté : '+nom+'.');vSet();};
   if($('bEx'))$('bEx').onclick=()=>{exemples();flash('Exemples chargés. Opérateurs d’exemple : téléphones 0600000011 à 0600000015, code 1234.');go('dash');};
   $('bRaz').onclick=e=>{const b=e.currentTarget;if(!b.dataset.armed){b.dataset.armed='1';b.textContent='Confirmer : tout effacer';return;}
     if(ONLINE){b.disabled=true;Net.reset().then(ok=>{flash(ok?'Toutes les commandes et tous les lots sont effacés.':'Pas de connexion : rien n’a été effacé.',ok?'ok':'err');vSet();});return;}
