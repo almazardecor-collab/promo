@@ -13471,7 +13471,7 @@ function ficheCard(o,g,mine){const f=o.prod&&o.prod.fab;
   FP.setL(0);const D=Fab.dossier(o),lab=Object.fromEntries(FP.POSTES.map(x=>[x[0],x[1]])),ci=D.cal,pe=Fab.planGet(o);calInit();CALSIG=calSig(o);
   D.cal={err:ci.st==='err'||!!(pe&&pe.err),msg:!ONLINE?'Le plan des plaques CP 15 et les programmes .cnc se préparent dans la version en ligne de l’app.':pe&&pe.err?'Plan des plaques refusé : '+pe.err+'.'+(g?' Recalcule les fiches du salon.':' Préviens le gérant.'):ci.st==='ok'?'Chargement du plan des plaques…'
     :g?fabErr(ci.txt):(ci.st==='err'||ci.st==='none'?'Le calepinage de ce salon n’est pas encore calculé : préviens le gérant.':'Le calepinage de ce salon est en cours chez le gérant. Le plan des plaques et les programmes .cnc arrivent dès qu’il est fini.')};
-  return `<div class="card" id="cFab"><h2>Fiches de fabrication</h2>${Fab.perime(o)?`<div class="msg err">Les cotes ont changé depuis le calcul de ces fiches.${g?' Recalcule-les.':' Préviens le gérant.'}</div>`:''}
+  return `<div class="card" id="cFab"><h2>Fiches de fabrication</h2>${Fab.perime(o)?`<div class="msg err">Les cotes ou le modèle ont changé depuis le calcul de ces fiches.${g?' Recalcule-les.':' Préviens le gérant.'}</div>`:''}
     ${keys.length>1?`<div class="tabs" role="tablist" aria-label="Fiche">${keys.map(k=>`<button role="tab" data-ft="${k}" aria-selected="${k===FTAB}">${lab[k]}</button>`).join('')}</div>`:''}<div id="fiche" role="tabpanel">${FP.render(FTAB,D)}</div>
     ${g&&ONLINE?`<p class="muted" id="calL" style="font-size:.9rem;margin:10px 0 0">${esc(fabErr(ci.txt))}</p>`:''}
     ${g?`<div class="row" style="margin-top:10px">${ONLINE&&ci.use?`<button class="btn sm pri" id="bCalUse">Utiliser le plan de ${ci.n} plaques maintenant</button>`:''}${ONLINE&&['none','err','calc'].includes(ci.st)?`<button class="btn sm" id="bCalGo">${ci.st==='calc'?'Reprendre la recherche':'Lancer le calepinage'}</button>`:''}<button class="btn sm" id="bFab">Recalculer les fiches</button></div><p id="fabM" class="muted" style="font-size:.85rem;margin:8px 0 0" aria-live="polite"></p>`:''}</div>`;}
@@ -13483,7 +13483,11 @@ async function fabLot(l){const M=fabManque(l);if(!M.length)return null;const m=(
 function calLot(O){const ok=O.filter(o=>Fab.calOk(o)),run=O.find(o=>Fab.calInfo(o).st==='run'),er=O.filter(o=>Fab.calInfo(o).st==='err'),tot=ok.reduce((t,o)=>t+o.prod.fab.cal.n,0);
   return 'Calepinage CP 15 : '+ok.length+' / '+O.length+' salon'+(O.length>1?'s':'')+' prêt'+(ok.length>1?'s':'')+(ok.length?' ('+tot+' plaques)':'')+(run?' · en cours : salon <b>'+court(run)+'</b> — '+esc(Fab.calInfo(run).txt.replace(/^Calepinage : /,'')):'')+(er.length?' · <b class="neg">non calculé : '+er.map(court).join(', ')+' ('+esc(fabErr(Fab.calInfo(er[0]).txt.replace(/^Calepinage non calculé : /,'')))+')</b>':'');}
 // reprise automatique : les salons lancés pas encore découpés dont le calepinage n'est pas fini sont calculés dès que le gérant ouvre la production
-function calAuto(){if(!ONLINE||!isG()||Fab.calBusy())return;const ids=S.lots.flatMap(l=>l.orderIds).filter(id=>{const o=S.orders.find(x=>x.id===id);return Fab.calNeed(o)&&!done(o,'cnc')&&Fab.calInfo(o).st!=='err';});if(ids.length)setTimeout(()=>Fab.calRun(ids),0);}
+const CALT=new Set();
+function calAuto(){if(!ONLINE||!isG()||Fab.calBusy()||Fab.busy())return;
+  // fiches calculées avec une ancienne version du modèle (ou d'anciennes cotes), salon pas encore découpé : refaites toutes seules, puis calepinage
+  const M=S.lots.flatMap(l=>fabManque(l)).filter(o=>o.prod&&o.prod.fab&&!done(o,'cnc')&&!CALT.has(o.id));
+  if(M.length){M.forEach(o=>CALT.add(o.id));Fab.prepare(M.map(o=>o.id)).then(()=>{Fab.calRun(M.map(o=>o.id));if(VIEW==='prod'&&!document.querySelector('[data-armed]')){const y=window.scrollY;vProd();window.scrollTo(0,y);}});return;}const ids=S.lots.flatMap(l=>l.orderIds).filter(id=>{const o=S.orders.find(x=>x.id===id);return Fab.calNeed(o)&&!done(o,'cnc')&&Fab.calInfo(o).st!=='err';});if(ids.length)setTimeout(()=>Fab.calRun(ids),0);}
 let CALSIG='';const calSig=o=>{const c=Fab.calInfo(o);return c.st+'|'+(c.n||0)+'|'+(c.use?1:0);};
 let CALI=false;function calInit(){if(CALI)return;CALI=true;Fab.onCal(()=>{if(VIEW==='prod'){document.querySelectorAll('[data-call]').forEach(el=>{const l=S.lots.find(x=>x.id===el.dataset.call);if(l)el.innerHTML=calLot(l.orderIds.map(id=>S.orders.find(o=>o.id===id)).filter(o=>o&&!o.annule));});
     if(!Fab.calBusy()&&!document.querySelector('[data-armed]')&&!/^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement||{}).tagName||'')){const y=window.scrollY;vProd();window.scrollTo(0,y);}return;}
@@ -13635,7 +13639,7 @@ const CP3STD=[{"n":1,"prog":"CP3","SL":3000,"SW":1220,"used":2450,"np":27,"nh":0
 
 /* ===== Fiches de fabrication : le générateur de salon tourne dans l'app (cadre caché), sans rien connecter ===== */
 const Fab=(()=>{
-  const GENV='19p1',GENF='19p2',CALV=1,CALB=180000,CFG0={sty:0,P:750,em:300,ang:1,c:300,eS:15,SL:2440,SW:1220,fm:2,F:120,hP:40,endG:1,endD:1,accG:1,accD:1,acT:2,acSame:1,acH:382.5,tPl:20,hPl:90};
+  const GENV='19p2',GENF='19p3',CALV=1,CALB=180000,CFG0={sty:0,P:750,em:300,ang:1,c:300,eS:15,SL:2440,SW:1220,fm:2,F:120,hP:40,endG:1,endD:1,accG:1,accD:1,acT:2,acSame:1,acH:382.5,tPl:20,hPl:90};
   const TABLE={pl:1100,ep:30,rb:325,rs:206.5,rh0:176.5,rh1:120,hb:420,h:620,ds:610,hs:15,lis:60},GUER={pl:500,ep:30,rb:170,rs:110,rh0:90,rh1:60,hb:360,h:540,ds:300,hs:15,lis:50};
   let fr=null,ready=null,busy=false;
   function load(){if(ready)return ready;
@@ -13646,7 +13650,7 @@ const Fab=(()=>{
       f.onerror=()=>fail('générateur introuvable');f.src='gen/salon.html?v='+GENF;document.body.appendChild(f);});
     return ready;}
   // exécuté dans le cadre du générateur : construit le salon et renvoie ce qui sert aux fiches
-  const INSIDE=`(function(c){P={...DEF,...c};R=buildS(P);var i=R.info,u={},n=0;R.parts.forEach(function(p){if(p.only3d)return;if(p.mat==='SOM')n++;var q=u[p.unit]=u[p.unit]||{};q[p.ref]=(q[p.ref]||0)+1;});
+  const INSIDE=`(function(c){PROMO.build(c);var i=R.info,u={},n=0;R.parts.forEach(function(p){if(p.only3d)return;if(p.mat==='SOM')n++;var q=u[p.unit]=u[p.unit]||{};q[p.ref]=(q[p.ref]||0)+1;});
     return JSON.stringify({mods:(i.mods||[]).map(function(m){return {id:m.id,len:m.len,br:m.br};}),seats:i.seats,acc:i.acc,D:i.D,Lx:i.Lx,Ly:i.Ly,hasL:!!i.hasL,hasR:!!i.hasR,units:u,nCarc:n,fl:(i.faces||[]).map(function(f){return f.len;}),warn:R.warn||[]});})`;
   const r1=x=>Math.round(x*10)/10;
   function build(o,g){const lg=lgOf(o),W=g.Lx,fx=x=>r1(W-x),inc=CFG0.c+CFG0.eS*(2-Math.SQRT2),S=g.seats,by=b=>S.filter(s=>s.br===b);
@@ -13680,11 +13684,11 @@ const Fab=(()=>{
   function dossier(o){const f=o.prod&&o.prod.fab;if(!f)return null;const l=lotOf(o),lg=lgOf(o),q={};POSTES.forEach(p=>{q[p.k]=opsDe(p.k).join(' · ');});
     return {...f,code:court(o),nom:o.client.nom+' · '+o.code,forme:o.forme,lg:{fond:+lg.fond||0,rg:+lg.rg||0,rd:+lg.rd||0},SL:2440,SW:1220,barres:{L:((l&&l.barre)||S.settings.barre||250)*10},plaques:(planGet(o)||{}).pl||[],cal:calInfo(o),cp3:CP3STD,table:TABLE,guer:GUER,qui:q};}
   // les cotes ont-elles changé depuis le calcul ?
-  const perime=o=>{const f=o.prod&&o.prod.fab,lg=lgOf(o);return !!f&&(f.gen!==GENV||!f.lgc||f.lgc.fond!==(+lg.fond||0)||f.lgc.rg!==(+lg.rg||0)||f.lgc.rd!==(+lg.rd||0));};
+  const perime=o=>{const f=o.prod&&o.prod.fab,lg=lgOf(o);return !!f&&((f.gen!==GENV&&!done(o,'cnc'))||!f.lgc||f.lgc.fond!==(+lg.fond||0)||f.lgc.rg!==(+lg.rg||0)||f.lgc.rd!==(+lg.rd||0));};
   // prépare les fiches d'une liste de salons, l'un après l'autre
   async function prepare(ids,onStep){if(busy)return {ok:0,ko:[['','calcul déjà en cours']]};busy=true;let ok=0;const ko=[];
     try{for(const id of ids){const o=S.orders.find(x=>x.id===id);if(!o)continue;if(onStep)onStep(o);
-        try{const old=o.prod&&o.prod.fab,f=await make(o);if(old&&old.cal&&old.lgc&&['fond','rg','rd'].every(k=>old.lgc[k]===f.lgc[k]))f.cal=old.cal;prodOf(o).fab=f;ok++;Store.save();}catch(e){ko.push([court(o),e.message||String(e)]);if(/introuvable|délai/.test(e.message||''))break;}}}
+        try{const old=o.prod&&o.prod.fab,f=await make(o);if(old&&old.cal&&old.gen===GENV&&old.lgc&&['fond','rg','rd'].every(k=>old.lgc[k]===f.lgc[k]))f.cal=old.cal;prodOf(o).fab=f;ok++;Store.save();}catch(e){ko.push([court(o),e.message||String(e)]);if(/introuvable|délai/.test(e.message||''))break;}}}
     finally{busy=false;}
     return {ok,ko};}
   /* ----- calepinage CP 15 : plan rapide tout de suite, puis recherche d'une plaque de moins en arrière-plan (un salon à la fois) ----- */

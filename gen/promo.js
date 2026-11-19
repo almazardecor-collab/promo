@@ -19,7 +19,11 @@ function tabParts(){const L=[];
     L.push({...base,id:`${u}-${q.rep}`,name:`${nm} — ${q.rep}`,out:orient(q.c[0],true),holes:q.c.slice(1).map(h=>orient(h,false)),...(pkL.length?{pkL}:{})});}
   return L;}
 /* toutes les pièces CP 15 du salon, toujours dans le même ordre (le calepinage enregistré désigne les pièces par leur rang) */
-function parts(c){P={...DEF,...c};R=buildS(P);return R.parts.filter(p=>p.mat==='SOM'&&!p.only3d).concat(tabParts());}
+/* règle du 19/11/2026 : aucune pièce plus longue que la plaque (241 cm utiles). Une banquette trop longue est divisée en deux banquettes
+   égales — jamais de pièce coupée en deux avec un assemblage puzzle (tenons ronds). Le dessus dépasse la caisse : on vérifie sur les pièces. */
+function build(c){for(const L of [2410,2340,2280,2200,2100,2000,1800]){P={...DEF,...c,Lmax:L};R=buildS(P);if(!(R.splits||[]).length)break;}
+  if((R.splits||[]).length)throw new Error('une pièce reste plus longue que la plaque ('+R.splits.map(x=>x.id).join(', ')+')');return R;}
+function parts(c){build(c);return R.parts.filter(p=>p.mat==='SOM'&&!p.only3d).concat(tabParts());}
 const sig=L=>{let h=2166136261;const add=s=>{for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}};
   for(const p of L){const b=bbox(p.out);add(p.id+':'+Math.round(b.w*10)+'x'+Math.round(b.h*10)+':'+p.out.length+':'+(p.holes||[]).length+';');}return L.length+'-'+(h>>>0).toString(36);};
 const enc=sheets=>sheets.map(s=>s.map(i=>[i.k,+(+i.x).toFixed(2),+(+i.y).toFixed(2),(i.rot?1:0)+(i.r2?2:0)].join(',')).join(';')).join('|');
@@ -228,5 +232,5 @@ async function filesLot(list){const zip=new JSZip(),names=[];let nEtq=0;
   for(const a of list){const pg=progs(a.c,a.cal,a.code,a.att);if(pg.bad.length)throw new Error('contrôle des programmes refusé : '+pg.bad[0]);const lb=labels(pg,a.code,a.nom);nEtq+=lb.n;
     for(const f of pg.out){zip.file(f.name+'.cnc',f.text);names.push(f.name+'.cnc');}zip.file(a.code+'-etiquettes-60x40.pdf',lb.blob);zip.file(a.code+'-LISEZMOI.txt',note(pg,a.code,a.nom,lb.n));}
   return {zip:await zip.generateAsync({type:'blob',compression:'DEFLATE'}),names,nEtq};}
-return {CALV,parts,sig,enc,dec,mkSheets,checkPlan,calc,stop,plan,progs,labels,files,filesLot,cp3Sheet,cncText,checkCnc,readCnc,planOf,open,tabParts};
+return {CALV,build,parts,sig,enc,dec,mkSheets,checkPlan,calc,stop,plan,progs,labels,files,filesLot,cp3Sheet,cncText,checkCnc,readCnc,planOf,open,tabParts};
 })();
