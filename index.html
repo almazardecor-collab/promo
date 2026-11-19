@@ -12934,7 +12934,7 @@ const telWa=t=>{let s=telN(t);if(s.startsWith('00'))s=s.slice(2);if(s.startsWith
 
 /* ---------- données ---------- */
 const DEFSET={base:14900,mlBase:10,pMl:600,pVit:800,acPct:75,resH:48,quota:108,rythme:7,liv0:'2026-12-21',arr:1,tolMl:0,
-  barre:250,plCh:10,colleKg:4,blancheKg:1,sintoKg:0.25,patinsT:12,sv:6,
+  barre:250,plCh:10,colleKg:4,blancheKg:1,sintoKg:0.25,patinsT:12,relJ:5,del:{cnc:2,carc:4,tab:4,face:5,plac:6,vern:9,emb:10},sv:6,
   zones:[{id:'z1',nom:'Agadir, Inezgane, Aït Melloul',prix:0},{id:'z2',nom:'Région d’Agadir',prix:0},{id:'z3',nom:'Autre ville',prix:0}],
   marque:'ALMAZARDECOR',adresse:'Showroom Agadir — 272 Av. Mohammed V, Dcheira El Jihadia',tel:'06 47 36 72 72',url:''};
 const LSK='almazar_promo_bois_app_v1';
@@ -12971,7 +12971,8 @@ const statut=(o,now=Date.now())=>o.annule?'ann':o.valideAt?'val':o.interne?'cot'
 const actives=()=>S.orders.filter(o=>!o.interne&&['res','conf','cot','val'].includes(statut(o)));
 const confirmees=()=>S.orders.filter(o=>o.confirmedAt&&!o.annule).sort((a,b)=>new Date(a.confirmedAt)-new Date(b.confirmedAt));
 const rangOf=o=>{if(o._rang)return o._rang;const c=confirmees(),i=c.findIndex(x=>x.id===o.id);return i>=0?i+1:c.length+1;};
-const livOf=o=>{const k=Math.floor((rangOf(o)-1)/Math.max(1,S.settings.rythme));const d=new Date(S.settings.liv0+'T12:00:00');d.setDate(d.getDate()+7*k);return d;};
+const livBase=o=>{const k=Math.floor((rangOf(o)-1)/Math.max(1,S.settings.rythme));const d=new Date(S.settings.liv0+'T12:00:00');d.setDate(d.getDate()+7*k);return d;};
+const livOf=o=>o.report&&o.report.date?new Date(o.report.date+'T12:00:00'):livBase(o);
 const nextCode=int=>{const n=S.orders.filter(o=>!!o.interne===!!int).reduce((m,o)=>Math.max(m,o.seq||0),0)+1;return {seq:n,code:int?'ESSAI-'+n:'PSM26-'+String(n).padStart(3,'0')};};
 const userOf=id=>S.users.find(u=>u.id===id)||{nom:'—'};
 const isG=()=>ME&&ME.role==='gerant';const isOp=()=>ME&&ME.role==='op';const home=()=>isG()?'dash':isOp()?'op':'list';
@@ -13018,7 +13019,7 @@ function vLogin(){
 /* ---------- tableau de bord (gérant) ---------- */
 function vDash(){const st=S.settings,C=confirmees(),R=S.orders.filter(o=>statut(o)==='res');
   const ca=C.reduce((s,o)=>s+totalOf(o),0),enc=S.orders.filter(o=>!o.annule).reduce((s,o)=>s+payeOf(o),0),du=C.reduce((s,o)=>s+resteOf(o),0);
-  const aRel=C.filter(o=>statut(o)==='conf').length,aVal=C.filter(o=>statut(o)==='cot').length;
+  const relT=C.filter(o=>relTard(o)).length,aRel=C.filter(o=>statut(o)==='conf').length,aVal=C.filter(o=>statut(o)==='cot').length;
   const V=S.users.filter(u=>S.orders.some(o=>o.vendeurId===u.id&&!o.interne));
   shell('Promo Salon <b>Bois</b>','Tableau de bord',`<div class="card"><h2>Ventes</h2><div class="kpi">
     <div><span>Confirmées</span><strong>${C.length} / ${st.quota}</strong></div>
@@ -13028,9 +13029,9 @@ function vDash(){const st=S.settings,C=confirmees(),R=S.orders.filter(o=>statut(
     <div><span>Reste dû</span><strong>${dh(du)}</strong></div>
     <div><span>Places restantes</span><strong>${Math.max(0,st.quota-actives().length)}</strong></div></div></div>
    <div class="card"><h2>À faire</h2><div class="kpi">
-    <div><span>Cotes à relever</span><strong>${aRel}</strong></div><div><span>À valider pour la production</span><strong>${aVal}</strong></div>
+    <div><span>Cotes à relever</span><strong class="${relT?'neg':''}">${aRel}${relT?' · '+relT+' en retard':''}</strong></div><div><span>À valider pour la production</span><strong>${aVal}</strong></div>
     <div><span>Réservations expirées</span><strong class="${S.orders.some(o=>statut(o)==='exp')?'neg':''}">${S.orders.filter(o=>statut(o)==='exp').length}</strong></div></div></div>
-   ${prodDash()}<div class="card"><h2>Par vendeur</h2>${V.length?`<table><thead><tr><th>Vendeur</th><th class="n">Confirmées</th><th class="n">CA</th><th class="n">Encaissé</th></tr></thead><tbody>${V.map(u=>{const c=C.filter(o=>o.vendeurId===u.id);
+   ${prodDash()}${delaisDash()}<div class="card"><h2>Par vendeur</h2>${V.length?`<table><thead><tr><th>Vendeur</th><th class="n">Confirmées</th><th class="n">CA</th><th class="n">Encaissé</th></tr></thead><tbody>${V.map(u=>{const c=C.filter(o=>o.vendeurId===u.id);
      return `<tr><td>${esc(u.nom)}</td><td class="n">${c.length}</td><td class="n">${fmt(c.reduce((s,o)=>s+totalOf(o),0))}</td><td class="n">${fmt(S.orders.filter(o=>o.vendeurId===u.id&&!o.annule).reduce((s,o)=>s+payeOf(o),0))}</td></tr>`;}).join('')}</tbody></table>`:'<p class="muted">Aucune commande pour l’instant.</p>'}</div>
    <div class="row"><button class="btn" id="bCsv">Exporter les commandes (CSV)</button></div>`);
   $('bCsv').onclick=()=>{const H=['Code','Statut','Date','Vendeur','Canal','Client','Téléphone','Ville','Quartier','ml','ml en plus','Vitres','Transport','Remise','Total','Encaissé','Reste','Rang','Livraison prévue'];
@@ -13043,7 +13044,7 @@ function vList(){if(isOp())return go('op');const mine=isG()?S.orders:S.orders.fi
   const chips=[['tous','Toutes'],['res','Réservées'],['conf','Confirmées'],['cot','Cotes relevées'],['val','Validées'],['exp','Expirées'],['ann','Annulées']];
   shell('Promo Salon <b>Bois</b>',isG()?'Toutes les commandes':'Mes commandes',`<input type="text" id="q" placeholder="Chercher : nom, téléphone, code, ville" value="${esc(Q)}" aria-label="Chercher une commande" style="margin-bottom:8px">
    <div class="chips">${chips.map(([k,l])=>`<button data-f="${k}" aria-pressed="${FIL===k}">${l} (${k==='tous'?mine.length:mine.filter(o=>statut(o)===k).length})</button>`).join('')}</div>
-   ${L.length?L.map(o=>{const s=statut(o);return `<button class="it" data-o="${o.id}"><span class="l1"><span>${esc(o.client.nom)} <span class="n muted">${o.code}</span></span>${tagH(s)}</span>
+   ${L.length?L.map(o=>{const s=statut(o);return `<button class="it" data-o="${o.id}"><span class="l1"><span>${esc(o.client.nom)} <span class="n muted">${o.code}</span></span><span>${relTard(o)?'<span class="tag exp">Relevé en retard</span> ':''}${tagH(s)}</span></span>
      <span class="l2"><span>${esc(o.client.ville||'')} · ${fmt(mlOf(o),1)} ml${isG()?' · '+esc(userOf(o.vendeurId).nom):''}</span><span class="n">${o.interne?'showroom':fmt(payeOf(o))+' / '+fmt(totalOf(o))+' DH'}</span></span></button>`;}).join(''):'<p class="muted">Aucune commande.</p>'}`);
   $('q').oninput=e=>{Q=e.target.value;const p=e.target.selectionStart;vList();const el=$('q');el.focus();el.setSelectionRange(p,p);};
   document.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{FIL=b.dataset.f;vList();});
@@ -13112,12 +13113,12 @@ function vOrd(){if(isOp())return go('op');const o=S.orders.find(x=>x.id===ARG);i
     ${canPay?`<div class="g2"><div><label class="f" for="pM">Montant reçu (DH)</label><input type="number" class="num" id="pM" inputmode="numeric" placeholder="${o.confirmedAt?Math.max(0,t-p):Math.max(0,ad-p)}"></div><div><label class="f" for="pMo">Mode</label><select id="pMo"><option>Espèces</option><option>Virement</option></select></div></div>
     <label class="f" for="pF">Photo du justificatif (virement, reçu)</label><input type="file" id="pF" accept="image/*" capture="environment">
     <p id="pE" class="msg err" hidden></p><button class="btn pri full" id="bPay" style="margin-top:10px">Enregistrer le paiement</button>`:''}</div>
-   <div class="card"><h2>Relevé des cotes chez le client</h2>${o.releve?`<p style="margin:0 0 6px">Relevé le ${fdate(o.releve.date)} par ${esc(userOf(o.releve.par).nom)} : fond ${fmt(o.releve.fond||0)}${o.releve.rg?' · gauche '+fmt(o.releve.rg):''}${o.releve.rd?' · droit '+fmt(o.releve.rd):''} cm${o.releve.notes?'<br><span class="muted">'+esc(o.releve.notes)+'</span>':''}</p>`:''}
+   <div class="card"><h2>Relevé des cotes chez le client</h2>${!o.releve&&o.confirmedAt&&!o.interne&&s!=='ann'?`<p class="${relTard(o)?'neg':'muted'}" style="margin:0 0 6px">${relTard(o)?'En retard : le relevé devait être fait avant le ':'À faire avant le '}${fdate(relLimite(o))}.</p>`:''}${o.releve?`<p style="margin:0 0 6px">Relevé le ${fdate(o.releve.date)} par ${esc(userOf(o.releve.par).nom)} : fond ${fmt(o.releve.fond||0)}${o.releve.rg?' · gauche '+fmt(o.releve.rg):''}${o.releve.rd?' · droit '+fmt(o.releve.rd):''} cm${o.releve.notes?'<br><span class="muted">'+esc(o.releve.notes)+'</span>':''}</p>`:''}
     ${canRel?`<div class="g3"><div><label class="f" for="rF">Fond (cm)</label><input type="number" class="num" id="rF" inputmode="numeric" value="${esc(lgOf(o).fond)}"></div><div><label class="f" for="rG">Retour gauche</label><input type="number" class="num" id="rG" inputmode="numeric" value="${esc(lgOf(o).rg)}" ${o.forme==='Droit'?'disabled':''}></div><div><label class="f" for="rD">Retour droit</label><input type="number" class="num" id="rD" inputmode="numeric" value="${esc(lgOf(o).rd)}" ${o.forme!=='U'?'disabled':''}></div></div>
     <label class="f" for="rN">Remarques (plinthe, prise, porte, angle…)</label><textarea id="rN" rows="2">${esc(o.releve?.notes||'')}</textarea>
     ${s==='val'?'<p class="muted" style="font-size:.85rem;margin:8px 0 0">Commande déjà validée : en corrigeant les cotes, les fiches de fabrication sont recalculées.</p>':''}<button class="btn full" id="bRel" style="margin-top:10px">${o.releve?(o.interne?'Corriger les cotes':'Corriger le relevé'):'Enregistrer le relevé'}</button>`:`<p class="muted">${o.confirmedAt||o.interne?(s==='val'?(cncFait?'La découpe CNC est validée : les cotes ne peuvent plus changer.':'Commande validée : seul le gérant peut encore corriger les cotes.'):''):'Le relevé se fait après l’acompte.'}</p>`}</div>
    <div class="card" id="cDoc"><h2>Documents pour le client</h2><div class="row"><button class="btn pri" id="bPdf">Bon de commande (PDF)</button><button class="btn" id="bWa">Message WhatsApp</button><button class="btn" id="bLien">Copier le lien de suivi</button></div><p id="dM" class="muted" style="font-size:.85rem;margin:8px 0 0" aria-live="polite"></p></div>
-   ${prodOrdCard(o)}<div class="card"><h2>Actions</h2><div class="row">
+   ${reportCard(o)}${prodOrdCard(o)}<div class="card"><h2>Actions</h2><div class="row">
     ${isG()&&s==='cot'?'<button class="btn pri" id="bVal">Valider pour la production</button>':''}
     ${!o.lotId&&((!o.confirmedAt&&s!=='ann')||(isG()&&s!=='ann'))?'<button class="btn bad" id="bAnn">Annuler la commande</button>':''}
     <button class="btn" data-go="list">Retour à la liste</button></div>
@@ -13134,6 +13135,7 @@ function vOrd(){if(isOp())return go('op');const o=S.orders.find(x=>x.id===ARG);i
     if(!(+r.fond>0)){flash('Indique au moins la cote du fond.','err');return vOrd();}if(cotesMin(o.forme,r)){flash(cotesMin(o.forme,r),'err');return vOrd();}const t0=totalOf(o);o.releve=r;Store.save();const t1=totalOf(o);
     if(o.lotId&&ONLINE)Fab.prepare([o.id]).then(x=>{if(VIEW!=='ord'||ARG!==o.id)return;if(x.ko.length)flash('Cotes enregistrées, mais fiches non recalculées : '+fabErr(x.ko[0][1])+'.','err');else flash('Cotes corrigées : les fiches de fabrication du salon '+court(o)+' sont recalculées.');vOrd();});
     flash('Relevé enregistré.'+(t1!==t0?' Le total passe de '+dh(t0)+' à '+dh(t1)+'.':' Le prix ne change pas.'));vOrd();};
+  reportBind(o);
   if($('bVal'))$('bVal').onclick=()=>{o.valideAt=new Date().toISOString();o.validePar=ME.id;Store.save();flash('Commande validée pour la production. Lance-la dans un lot depuis l’onglet Production.');vOrd();};
   if($('bAnn'))$('bAnn').onclick=e=>{const b=e.currentTarget;if(!b.dataset.armed){b.dataset.armed='1';b.textContent='Confirmer l’annulation';return;}
     o.annule={at:new Date().toISOString(),par:ME.id,motif:o.confirmedAt?'annulée par le gérant':'réservation annulée'};Store.save();flash('Commande annulée.');vOrd();};
@@ -13180,6 +13182,8 @@ function vSet(){if(!isG())return go('list');const st=S.settings;
   const num=(k,l,u)=>`<div><label class="f" for="s_${k}">${l}</label><input type="number" class="num" id="s_${k}" data-k="${k}" step="any" value="${st[k]}" aria-label="${l} (${u})"></div>`;
   shell('Promo Salon <b>Bois</b>','Réglages',`<div class="card"><h2>Offre et prix</h2><div class="g2">${num('base','Prix de l’offre (DH)','DH')}${num('mlBase','Métrage compris (ml)','ml')}${num('pMl','Mètre en plus (DH)','DH')}${num('arr','Mètre en plus compté par tranche entière de (m)','m')}${num('tolMl','Dépassement toléré sans supplément (m)','m')}${num('pVit','Vitres (DH)','DH')}${num('acPct','Acompte (%)','%')}</div></div>
    <div class="card"><h2>Ventes et livraisons</h2><div class="g2">${num('quota','Nombre de salons à vendre','salons')}${num('resH','Réservation sans acompte (heures)','h')}${num('rythme','Salons livrés par semaine','salons')}<div><label class="f" for="s_liv0">Semaine des premières livraisons</label><input type="date" id="s_liv0" data-k="liv0" value="${esc(st.liv0)}"></div></div></div>
+   <div class="card"><h2>Délais</h2><p class="muted" style="font-size:.85rem;margin:0 0 6px">Jours travaillés : du lundi au samedi (le samedi, la journée finit à 15 h). Chaque étape doit être finie tant de jours travaillés après le lancement du lot. Les lots déjà lancés gardent leurs dates.</p>
+    <div class="g2">${STEPS.map(x=>`<div><label class="f" for="d_${x.k}">${x.lab} (jours)</label><input type="number" class="num" id="d_${x.k}" data-del="${x.k}" min="1" max="60" step="1" value="${delSet()[x.k]}"></div>`).join('')}${num('relJ','Relevé des cotes après l’acompte (jours)','jours')}</div></div>
    <div class="card"><h2>Achats par salon</h2><div class="g2">${num('barre','Barres de face reçues (cm)','cm')}${num('plCh','Chutes de placage (%)','%')}${num('colleKg','Colle de placage par salon (kg)','kg')}${num('blancheKg','Colle blanche à bois par salon (kg)','kg')}${num('sintoKg','Sintofer de rebouchage par salon (kg)','kg')}${num('patinsT','Patins de table et guéridons par salon','patins')}</div></div>
    <div class="card"><h2>Transport par zone</h2><div id="zs">${st.zones.map((z,i)=>`<div class="row" style="margin-bottom:6px"><input type="text" data-z="${i}" data-zk="nom" value="${esc(z.nom)}" aria-label="Nom de la zone ${i+1}" style="flex:2 1 160px"><input type="number" class="num" data-z="${i}" data-zk="prix" value="${z.prix}" aria-label="Prix du transport zone ${i+1} (DH)" style="flex:1 1 80px"><button class="btn sm bad" data-zd="${i}" aria-label="Supprimer la zone ${i+1}">×</button></div>`).join('')}</div><button class="btn sm" id="zAdd">Ajouter une zone</button></div>
    <div class="card"><h2>Équipe</h2><table><tbody>${S.users.map(u=>`<tr><td>${esc(u.nom)}<br><span class="muted">${esc(u.tel)} · ${roleLab(u)}${u.actif===false?' · désactivé':''}</span></td><td class="n">${u.id!==ME.id?`<button class="btn sm" data-ut="${u.id}">${u.actif===false?'Réactiver':'Désactiver'}</button>`:''}</td></tr>`).join('')}</tbody></table>
@@ -13189,6 +13193,7 @@ function vSet(){if(!isG())return go('list');const st=S.settings;
     <button class="btn sm" id="uAdd" style="margin-top:8px">Ajouter</button></div>
    <div class="card"><h2>Bon de commande</h2><label class="f" for="s_marque">Nom affiché</label><input type="text" id="s_marque" data-k="marque" value="${esc(st.marque)}"><label class="f" for="s_adresse">Adresse affichée (jamais celle de l’atelier)</label><input type="text" id="s_adresse" data-k="adresse" value="${esc(st.adresse)}"><label class="f" for="s_tel">WhatsApp affiché</label><input type="text" id="s_tel" data-k="tel" value="${esc(st.tel)}"></div>
    <div class="card"><h2>Essais</h2><div class="row">${ONLINE?'':'<button class="btn sm" id="bEx">Charger des commandes d’exemple</button>'}<button class="btn sm bad" id="bRaz">Effacer toutes les commandes</button></div></div>`);
+  document.querySelectorAll('[data-del]').forEach(el=>el.onchange=()=>{st.del={...delSet(),[el.dataset.del]:Math.min(60,Math.max(1,Math.round(+el.value)||1))};Store.save();vSet();});
   document.querySelectorAll('[data-k]').forEach(el=>el.onchange=()=>{const k=el.dataset.k;st[k]=el.type==='number'?(+el.value||0):el.value;Store.save();});
   document.querySelectorAll('[data-z]').forEach(el=>el.onchange=()=>{st.zones[+el.dataset.z][el.dataset.zk]=el.dataset.zk==='prix'?(+el.value||0):el.value;Store.save();});
   document.querySelectorAll('[data-zd]').forEach(b=>b.onclick=()=>{const z=st.zones[+b.dataset.zd];if(S.orders.some(o=>o.zoneId===z.id)){flash('Zone utilisée par une commande : elle ne peut pas être supprimée.','err');return vSet();}st.zones.splice(+b.dataset.zd,1);Store.save();vSet();});
@@ -13241,8 +13246,49 @@ const pret=o=>done(o,'emb');
 const nbDone=o=>STEPS.filter(s=>done(o,s.k)).length;
 const lotOf=o=>S.lots.find(l=>l.id===o.lotId)||null;
 const enProd=()=>S.orders.filter(o=>o.lotId&&!o.annule&&lotOf(o));
-const finLot=l=>new Date(l.fin+'T23:59:59');
-const enRetard=(o,now=Date.now())=>{const l=lotOf(o);return !!l&&!pret(o)&&now>finLot(l).getTime();};
+/* ----- délais : jours travaillés du lundi au samedi ; le samedi, la journée finit à 15 h ----- */
+const DELDEF={cnc:2,carc:4,tab:4,face:5,plac:6,vern:9,emb:10};
+const delSet=()=>({...DELDEF,...(S.settings.del||{})});
+const ymd=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const ouvre=d=>d.getDay()!==0;
+// n-ième jour travaillé à partir du lancement (le jour du lancement compte s'il est travaillé et lancé avant midi)
+function jourN(depart,n){const d=new Date(depart);if(!ouvre(d)||d.getHours()>=12)d.setDate(d.getDate()+1);d.setHours(12,0,0,0);while(!ouvre(d))d.setDate(d.getDate()+1);
+  for(let i=1;i<n;i++){d.setDate(d.getDate()+1);while(!ouvre(d))d.setDate(d.getDate()+1);}return ymd(d);}
+const delaisLot=(at,del)=>Object.fromEntries(STEPS.map(s=>[s.k,jourN(at,Math.max(1,Math.round(+del[s.k]||DELDEF[s.k])))]));
+const finJour=j=>{const d=new Date(j+'T23:59:59');if(d.getDay()===6)d.setHours(15,0,0,0);return d;};
+const dlLot=l=>l.dl||(l._dl||(l._dl={...delaisLot(l.at,DELDEF),emb:l.fin}));   // lots lancés avant les délais : calcul à la volée
+const limite=(o,k)=>{const l=lotOf(o);return l?finJour(k==='emb'&&l.fin?l.fin:dlLot(l)[k]):null;};
+const tard=(o,k,now=Date.now())=>!done(o,k)&&!!limite(o,k)&&now>limite(o,k).getTime();
+const jour=d=>new Date(d).toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'2-digit'});
+const finLot=l=>finJour(l.fin);
+const enRetard=(o,now=Date.now())=>!!lotOf(o)&&!o.annule&&STEPS.some(s=>tard(o,s.k,now));
+const stepTard=o=>STEPS.find(s=>tard(o,s.k));
+/* livraison promise : le salon doit être prêt avant le lundi de sa semaine de livraison */
+const lundi=d=>{const x=new Date(d);x.setHours(12,0,0,0);x.setDate(x.getDate()-((x.getDay()+6)%7));return x;};
+const pretAvant=o=>{const x=lundi(livOf(o));x.setDate(x.getDate()-2);return finJour(ymd(x));};   // samedi d'avant, 15 h
+function lancerAvant(o){const lim=pretAvant(o),n=Math.max(1,Math.round(+delSet().emb||10)),d=new Date(lim);d.setHours(8,0,0,0);
+  for(let i=0;i<60;i++){if(ouvre(d)&&finJour(jourN(d,n)).getTime()<=lim.getTime())return d;d.setDate(d.getDate()-1);}return d;}
+// état d'une commande confirmée face à sa semaine promise : 'ko' ne tiendra pas, 'vite' à lancer sous 7 jours, '' rien à signaler
+function etatLiv(o,now=Date.now()){if(o.interne||o.annule||!o.confirmedAt||pret(o))return '';const lim=pretAvant(o).getTime(),l=lotOf(o);
+  if(l)return finLot(l).getTime()>lim||now>lim?'ko':'';
+  const la=lancerAvant(o);la.setHours(23,59,59,0);return now>la.getTime()?'ko':la.getTime()-now<7*864e5?'vite':'';}
+function delaisDash(){const C=confirmees().filter(o=>!o.interne),ko=C.filter(o=>etatLiv(o)==='ko'),vite=C.filter(o=>etatLiv(o)==='vite');if(!ko.length&&!vite.length)return '';
+  const li=(o,t)=>`<button class="it ${t==='ko'?'alert':''}" data-go="ord" data-arg="${o.id}"><span class="l1"><span>${esc(o.client.nom)} <span class="n muted">${o.code}</span></span><span class="tag ${t==='ko'?'exp':'res'}">${t==='ko'?'Ne tiendra pas':'À lancer'}</span></span>
+    <span class="l2"><span>Livraison promise : semaine du ${fdate(livOf(o))}</span><span>${lotOf(o)?'lot '+lotOf(o).num+', fin '+jour(finLot(lotOf(o))):(t==='ko'?'il fallait lancer avant ':'à lancer avant ')+jour(lancerAvant(o))}</span></span></button>`;
+  return `<div class="card"><h2>Livraisons à surveiller</h2>${ko.map(o=>li(o,'ko')).join('')}${vite.map(o=>li(o,'vite')).join('')}<p class="muted" style="font-size:.85rem;margin:6px 0 0">Un salon doit être prêt avant le lundi de sa semaine de livraison. La date du client ne change que si tu la reportes dans sa commande.</p></div>`;}
+function reportCard(o){if(!isG()||o.interne||o.annule||!o.confirmedAt)return '';const r=o.report,e=etatLiv(o);
+  return `<div class="card" id="cRep"><h2>Date de livraison</h2><p style="margin:0 0 6px">${r?`Reportée à la semaine du <b>${fdate(livOf(o))}</b> <span class="muted">(prévue au départ : semaine du ${fdate(livBase(o))})</span>`:`Promise : semaine du <b>${fdate(livOf(o))}</b>`}${e==='ko'?' <span class="tag exp">Ne tiendra pas</span>':''}</p>
+    <div class="g2"><div><label class="f" for="rpD">Nouvelle semaine de livraison</label><input type="date" id="rpD" value="${r?esc(r.date):''}"></div><div style="display:flex;align-items:flex-end"><button class="btn full" id="bRep">Reporter la livraison</button></div></div>
+    ${r?`<div class="row" style="margin-top:8px"><button class="btn pri" id="bRepWa">Prévenir le client (WhatsApp)</button><button class="btn" id="bRepX">Annuler le report</button></div>`:''}</div>`;}
+function reportBind(o){if(!$('bRep'))return;
+  $('bRep').onclick=()=>{const v=$('rpD').value;if(!v){flash('Choisis la nouvelle semaine de livraison.','err');return vOrd();}const m=ymd(lundi(new Date(v+'T12:00:00')));
+    if(new Date(m+'T12:00:00')<=livBase(o)){flash('La nouvelle semaine doit être après la semaine promise ('+fdate(livBase(o))+').','err');return vOrd();}
+    o.report={date:m,at:new Date().toISOString(),par:ME.id};Store.save();flash('Livraison reportée à la semaine du '+fdate(livOf(o))+'. Préviens le client.');vOrd();};
+  if($('bRepX'))$('bRepX').onclick=()=>{delete o.report;Store.save();flash('Report annulé : la livraison revient à la semaine du '+fdate(livOf(o))+'.');vOrd();};
+  if($('bRepWa'))$('bRepWa').onclick=()=>{window.open('https://wa.me/'+telWa(o.client.tel)+'?text='+encodeURIComponent(`Bonjour ${o.client.nom}, la livraison de votre commande ${S.settings.marque} ${o.code} est reportée à la semaine du ${fdate(livOf(o))}. Nous nous excusons pour ce décalage. Suivez votre commande : ${suiviUrl(o)}`),'_blank');};}
+/* relevé des cotes : délai après l'acompte */
+const relLimite=o=>{const d=new Date(o.confirmedAt);d.setDate(d.getDate()+Math.max(1,Math.round(+S.settings.relJ||5)));d.setHours(23,59,59,0);return d;};
+const relTard=(o,now=Date.now())=>!!o.confirmedAt&&!o.releve&&!o.interne&&!o.annule&&now>relLimite(o).getTime();
 const aLancer=()=>S.orders.filter(o=>statut(o)==='val'&&!o.lotId).sort((a,b)=>(b.interne?1:0)-(a.interne?1:0)||(a.interne?a.seq-b.seq:rangOf(a)-rangOf(b)));
 const ordreProd=(a,b)=>((b.prod&&b.prod.prio?1:0)-(a.prod&&a.prod.prio?1:0))||(lotOf(a).num-lotOf(b).num)||(lotOf(a).orderIds.indexOf(a.id)-lotOf(b).orderIds.indexOf(b.id));
 const roleLab=u=>u.role==='gerant'?'gérant':u.role==='op'?'opérateur — '+(u.postes||[]).map(k=>stepOf(k).lab).join(', '):'vendeur';
@@ -13277,7 +13323,7 @@ async function openScanner(cb){closeScanner();const ov=document.createElement('d
   }catch(e){msg('Caméra indisponible ici. Tape le code écrit en gros sur la fiche.');const i=ov.querySelector('#scT');if(i)i.focus();}}
 
 /* ---------- morceaux communs ---------- */
-const tagsP=o=>`${o.prod&&o.prod.prio?'<span class="tag prio">Prioritaire</span> ':''}${bloque(o)?'<span class="tag exp">Bloqué</span> ':''}${enRetard(o)?'<span class="tag exp">En retard</span> ':''}${pret(o)?'<span class="tag conf">Prêt à livrer</span>':''}`;
+const tagsP=o=>`${o.prod&&o.prod.prio?'<span class="tag prio">Prioritaire</span> ':''}${bloque(o)?'<span class="tag exp">Bloqué</span> ':''}${enRetard(o)?'<span class="tag exp">En retard</span> ':''}${pret(o)?'<span class="tag conf">Prêt à livrer'+(n=>n>=1?' depuis '+n+' j':'')(Math.floor((Date.now()-new Date(o.prod.steps.emb.at).getTime())/864e5))+'</span>':''}`;
 const dots=o=>`<span class="dots" role="img" aria-label="${nbDone(o)} étapes finies sur ${STEPS.length}">${STEPS.map(s=>`<i class="${done(o,s.k)?'d':dispo(o,s.k)?'c':''}"></i>`).join('')}</span>`;
 const cotes=o=>{const l=lgOf(o);return `fond ${fmt(l.fond||0)}${l.rg?' · gauche '+fmt(l.rg):''}${l.rd?' · droit '+fmt(l.rd):''} cm`;};
 function prodKpi(){const P=enProd(),pb=P.filter(bloque),rt=P.filter(o=>enRetard(o));
@@ -13285,7 +13331,8 @@ function prodKpi(){const P=enProd(),pb=P.filter(bloque),rt=P.filter(o=>enRetard(
    <div><span>Bloqués</span><strong class="${pb.length?'neg':''}">${pb.length}</strong></div><div><span>En retard</span><strong class="${rt.length?'neg':''}">${rt.length}</strong></div>
    <div><span>Prêts à livrer</span><strong class="pos">${P.filter(pret).length}</strong></div></div>
    ${pb.map(o=>pbOuverts(o).map(p=>`<button class="it alert" data-sal="${o.id}">Salon ${court(o)} bloqué — ${esc(p.note||'problème signalé')} <span class="muted">· ${esc(userOf(p.par).nom)}, ${fdt(p.at)}</span></button>`).join('')).join('')}
-   ${rt.map(o=>`<button class="it alert" data-sal="${o.id}">Salon ${court(o)} en retard — lot ${lotOf(o).num}, fin prévue le ${fdate(finLot(lotOf(o)))}</button>`).join('')}`;}
+   ${rt.length?`<p class="muted" style="margin:8px 0 4px">Retards par poste : ${STEPS.map(s=>[s,P.filter(o=>tard(o,s.k)).length]).filter(x=>x[1]).map(([s,n])=>`<b class="neg">${s.lab} ${n}</b>`).join(' · ')}</p>`:''}
+   ${rt.map(o=>{const s=stepTard(o);return `<button class="it alert" data-sal="${o.id}">Salon ${court(o)} en retard — ${s.lab}, c’était pour ${jour(limite(o,s.k))} <span class="muted">· lot ${lotOf(o).num}</span></button>`;}).join('')}`;}
 function prodDash(){if(!enProd().length&&!aLancer().length)return '';return `<div class="card"><h2>Production</h2>${prodKpi()}</div>`;}
 function prodOrdCard(o){if(statut(o)!=='val')return '';if(!o.lotId)return `<div class="card"><h2>Production</h2><p class="muted" style="margin:0">Validée : en attente du lancement d’un lot.</p></div>`;
   return `<div class="card"><h2>Production</h2><p style="margin:0 0 8px">Lot ${(lotOf(o)||{num:'…'}).num} · code atelier <span class="n cd">${court(o)}</span> · ${nbDone(o)} étapes sur ${STEPS.length} ${tagsP(o)}</p>${isG()?`<button class="btn" data-sal="${o.id}">Voir la fabrication</button>`:''}</div>`;}
@@ -13309,20 +13356,22 @@ function achats(O,lot){const st=S.settings,n=O.length,L=(+(lot&&lot.barre)||+st.
    <p class="muted" style="font-size:.85rem;margin:6px 0 0">Une ligne par déplacement. Plaques : base du prototype de 10,2 ml.${lg?' '+lg+' salon(s) plus long(s) : nombre de plaques à confirmer par le générateur.':''} Placage : surfaces du modèle (accoudoirs sur les 2 joues, dessus et chants des plateaux, dessous non compté). Quincaillerie : quantités du modèle selon la forme du salon (U, L ou droit). Emballage pas encore compté.</p>`;}
 
 /* ---------- production (gérant) ---------- */
-function vProd(){if(!isG())return go(home());const C=aLancer(),n=Math.min(C.length,Math.max(1,S.settings.rythme)),num=S.lots.reduce((m,l)=>Math.max(m,l.num),0)+1,dflt=new Date(Date.now()+7*864e5).toISOString().slice(0,10),bar0=(S.lots.length&&+S.lots[S.lots.length-1].barre)||+S.settings.barre||250;
+function vProd(){if(!isG())return go(home());const C=aLancer(),n=Math.min(C.length,Math.max(1,S.settings.rythme)),num=S.lots.reduce((m,l)=>Math.max(m,l.num),0)+1,dl0=delaisLot(new Date(),delSet()),dflt=dl0.emb,bar0=(S.lots.length&&+S.lots[S.lots.length-1].barre)||+S.settings.barre||250;
   shell('Promo Salon <b>Bois</b>','Production',`<div class="card"><h2>Atelier</h2>${prodKpi()}</div>
    <div class="card"><h2>Lancer un lot</h2>${C.length?`<p style="margin:0 0 6px">Prochains salons validés, dans l’ordre :</p><table><tbody>${C.slice(0,n).map(o=>`<tr><td><span class="n cd">${court(o)}</span> ${esc(o.client.nom)}</td><td>${esc(o.forme)} · ${fmt(mlOf(o),1)} ml</td><td class="n">${o.interne?'showroom':'rang '+rangOf(o)}</td></tr>`).join('')}</tbody></table>
      ${C.length>n?`<p class="muted" style="margin:6px 0 0">${C.length-n} autre(s) salon(s) validé(s) pour le lot suivant.</p>`:''}
      <div class="g2"><div><label class="f" for="lFin">Fin prévue du lot</label><input type="date" id="lFin" value="${dflt}"></div><div><label class="f" for="lBar">Barres de face reçues (cm)</label><input type="number" class="num" id="lBar" inputmode="numeric" min="100" max="600" step="5" value="${bar0}"></div></div>
+     <p class="muted" style="font-size:.85rem;margin:8px 0 0">Délais si le lot est lancé maintenant : ${STEPS.map(s=>s.lab+' '+jour(dl0[s.k]+'T12:00:00')).join(' · ')}.</p>
      <button class="btn pri full" id="bLot" style="margin-top:10px">Lancer le lot ${num} (${n} salon${n>1?'s':''})</button>`:'<p class="muted" style="margin:0">Aucune commande validée en attente.</p>'}</div>
    ${[...S.lots].sort((a,b)=>b.num-a.num).map(l=>{const O=l.orderIds.map(id=>S.orders.find(o=>o.id===id)).filter(o=>o&&!o.annule);
      return `<div class="card"><h2>Lot ${l.num} — lancé le ${fdate(l.at)} · fin prévue le ${fdate(finLot(l))}</h2>${O.map(o=>`<button class="it" data-sal="${o.id}"><span class="l1"><span><span class="n cd">${court(o)}</span> ${esc(o.client.nom)}</span><span>${tagsP(o)}</span></span>
        <span class="l2"><span>${esc(o.forme)} · ${fmt(mlOf(o),1)} ml · ${nbDone(o)}/${STEPS.length}</span>${dots(o)}</span></button>`).join('')}
       <p class="muted" style="font-size:.9rem;margin:6px 0">Fiches de fabrication : ${O.length-fabManque(l).length} / ${O.length} salon${O.length>1?'s':''} prêt${O.length-fabManque(l).length>1?'s':''}.</p>
       <div class="row"><button class="btn sm" data-fl="${l.id}">Fiches du lot (PDF)</button>${fabManque(l).length?`<button class="btn sm pri" data-fab="${l.id}">Préparer les fiches de fabrication</button>`:''}</div><p class="muted" data-flm="${l.id}" style="font-size:.85rem;margin:6px 0 0" aria-live="polite"></p>
+      <details><summary>Délais du lot</summary><table><tbody>${STEPS.map(s=>{const lim=finJour(s.k==='emb'?l.fin:dlLot(l)[s.k]),nt=O.filter(o=>tard(o,s.k)).length,nd=O.filter(o=>done(o,s.k)).length;return `<tr><td>${s.lab}</td><td>${jour(lim)}${lim.getDay()===6?' 15 h':''}</td><td class="n">${nd}/${O.length}</td><td>${nt?`<b class="neg">${nt} en retard</b>`:nd===O.length?'<span class="pos">fini</span>':''}</td></tr>`;}).join('')}</tbody></table></details>
       <details><summary>Liste d’achat du lot</summary>${achats(O,l)}</details></div>`;}).join('')}`);
   if($('bLot'))$('bLot').onclick=e=>{const b=e.currentTarget;if(!b.dataset.armed){b.dataset.armed='1';b.textContent='Confirmer le lancement du lot '+num;return;}
-    const L=C.slice(0,n),l={id:uid(),num,at:new Date().toISOString(),par:ME.id,fin:$('lFin').value||dflt,barre:Math.min(600,Math.max(100,+$('lBar').value||bar0)),orderIds:L.map(o=>o.id)};S.lots.push(l);L.forEach(o=>{o.lotId=l.id;prodOf(o);});Store.save();
+    const L=C.slice(0,n),l={id:uid(),num,at:new Date().toISOString(),par:ME.id,fin:$('lFin').value||dflt,dl:{...dl0,emb:$('lFin').value||dflt},barre:Math.min(600,Math.max(100,+$('lBar').value||bar0)),orderIds:L.map(o=>o.id)};S.lots.push(l);L.forEach(o=>{o.lotId=l.id;prodOf(o);});Store.save();
     flash('Lot '+num+' lancé : '+n+' salon'+(n>1?'s':'')+'. Imprime les fiches du lot.');vProd();if(ONLINE)fabLot(l);};
   document.querySelectorAll('[data-fab]').forEach(b=>b.onclick=()=>{b.disabled=true;fabLot(S.lots.find(x=>x.id===b.dataset.fab)).then(r=>{if(!r)vProd();});});
   document.querySelectorAll('[data-fl]').forEach(b=>b.onclick=async()=>{const l=S.lots.find(x=>x.id===b.dataset.fl),O=l.orderIds.map(id=>S.orders.find(o=>o.id===id)).filter(o=>o&&!o.annule);
@@ -13331,8 +13380,8 @@ function vProd(){if(!isG())return go(home());const C=aLancer(),n=Math.min(C.leng
 /* ---------- fiche d'un salon en fabrication ---------- */
 function vSal(){const a=ARG||{},o=S.orders.find(x=>x.id===a.id);if(!o||!o.lotId||!lotOf(o)||(!isG()&&!isOp()))return go(home());
   const l=lotOf(o),p=prodOf(o),g=isG(),mine=g?STEPS.map(s=>s.k):(ME.postes||[]),blk=bloque(o);
-  const stTxt=s=>{const d=p.steps[s.k];if(d)return 'validé le '+fdt(d.at)+' par '+esc(userOf(d.par).nom);if(dispo(o,s.k))return 'à faire'+(s.g?' — validé par le gérant':opsDe(s.k).length?' — '+esc(opsDe(s.k).join(', ')):'');
-    return 'en attente de : '+s.dep.filter(d2=>!done(o,d2)).map(d2=>stepOf(d2).lab).join(', ');};
+  const stTxt=s=>{const d=p.steps[s.k];if(d)return 'validé le '+fdt(d.at)+' par '+esc(userOf(d.par).nom);const dlT=tard(o,s.k)?' · <b class="neg">en retard, c’était pour '+jour(limite(o,s.k))+'</b>':' · avant '+jour(limite(o,s.k));if(dispo(o,s.k))return 'à faire'+(s.g?' — validé par le gérant':opsDe(s.k).length?' — '+esc(opsDe(s.k).join(', ')):'')+dlT;
+    return 'en attente de : '+s.dep.filter(d2=>!done(o,d2)).map(d2=>stepOf(d2).lab).join(', ')+dlT;};
   const act=s=>{const k=s.k;if(g&&done(o,k)&&!STEPS.some(x=>x.dep.includes(k)&&done(o,x.k)))return `<button class="btn sm bad" data-undo="${k}">Annuler</button>`;
     if(!g||!dispo(o,k)||blk)return '';return s.g?`<div style="margin-top:6px"><label class="f" for="ph_${k}">Photo du salon (obligatoire)</label><input type="file" id="ph_${k}" accept="image/*" capture="environment"><button class="btn pri sm" data-ok="${k}" style="margin-top:6px">Valider : ${s.lab}</button></div>`:`<button class="btn sm" data-ok="${k}">Valider à sa place</button>`;};
   let opBox='';if(!g){const my=mine.filter(k=>dispo(o,k)),att=mine.filter(k=>!done(o,k)&&!dispo(o,k));
@@ -13392,12 +13441,12 @@ async function fabLot(l){const M=fabManque(l);if(!M.length)return null;const m=(
 /* ---------- mon travail (opérateur) ---------- */
 function vOp(){if(!isOp())return go(home());const mine=ME.postes||[],P=enProd().filter(o=>!pret(o)),todo=[];
   P.forEach(o=>mine.forEach(k=>{if(dispo(o,k))todo.push({o,k});}));
-  todo.sort((a,b)=>((b.o.prod.prio?1:0)-(a.o.prod.prio?1:0))||(mine.indexOf(a.k)-mine.indexOf(b.k))||ordreProd(a.o,b.o));
+  todo.sort((a,b)=>((b.o.prod.prio?1:0)-(a.o.prod.prio?1:0))||(limite(a.o,a.k)-limite(b.o,b.k))||(mine.indexOf(a.k)-mine.indexOf(b.k))||ordreProd(a.o,b.o));
   const att=mine.map(k=>[k,P.filter(o=>!done(o,k)&&!dispo(o,k)).length]).filter(x=>x[1]),today=new Date().toDateString(),fait=[];
   enProd().forEach(o=>mine.forEach(k=>{const s=o.prod&&o.prod.steps[k];if(s&&s.par===ME.id&&new Date(s.at).toDateString()===today)fait.push({o,k,at:s.at});}));fait.sort((a,b)=>new Date(b.at)-new Date(a.at));
   shell('Mon <b>travail</b>',esc(mine.map(k=>stepOf(k).lab).join(' · ')),`<button class="btn pri full xl" id="bScan">Scanner un salon</button>
    <div class="row" style="margin:8px 0 12px"><input type="text" id="opT" autocomplete="off" placeholder="ou tape le code écrit en gros (ex. 012)" aria-label="Code du salon" style="flex:1 1 160px"><button class="btn" id="opOk">Ouvrir</button></div>
-   <div class="card"><h2>À faire (${todo.length})</h2>${todo.length?todo.map(({o,k})=>`<button class="it" data-sal="${o.id}"><span class="l1"><span><span class="n cd">${court(o)}</span> ${esc(o.client.nom)}</span><span>${tagsP(o)}</span></span><span class="l2"><span>${stepOf(k).lab}</span><span>${esc(o.forme)} · ${cotes(o)}</span></span></button>`).join(''):'<p class="muted" style="margin:0">Rien à faire pour l’instant.</p>'}
+   <div class="card"><h2>À faire (${todo.length})${todo.some(x=>tard(x.o,x.k))?` <span class="tag exp">${todo.filter(x=>tard(x.o,x.k)).length} en retard</span>`:''}</h2>${todo.length?todo.map(({o,k})=>`<button class="it" data-sal="${o.id}"><span class="l1"><span><span class="n cd">${court(o)}</span> ${esc(o.client.nom)}</span><span>${tagsP(o)}</span></span><span class="l2"><span>${stepOf(k).lab} · ${tard(o,k)?'<b class="neg">en retard ('+jour(limite(o,k))+')</b>':'avant '+jour(limite(o,k))}</span><span>${esc(o.forme)} · ${cotes(o)}</span></span></button>`).join(''):'<p class="muted" style="margin:0">Rien à faire pour l’instant.</p>'}
     ${att.length?`<p class="muted" style="margin:6px 0 0">En attente de l’étape d’avant : ${att.map(([k,n])=>n+' salon'+(n>1?'s':'')+' ('+stepOf(k).lab+')').join(', ')}.</p>`:''}</div>
    <div class="card"><h2>Validé aujourd’hui (${fait.length})</h2>${fait.length?`<table><tbody>${fait.map(f=>`<tr><td><span class="n cd">${court(f.o)}</span> ${esc(f.o.client.nom)}</td><td>${stepOf(f.k).lab}</td><td class="n">${new Date(f.at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</td></tr>`).join('')}</tbody></table>`:'<p class="muted" style="margin:0">Aucune validation aujourd’hui.</p>'}</div>`);
   const open=t=>{const f=parseScan(t);if(!f||!f.lotId||!lotOf(f))return 'Code inconnu. Vérifie le code écrit en gros sur la fiche.';closeScanner();go('sal',{id:f.id,scan:true});return '';};
