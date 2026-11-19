@@ -85,6 +85,33 @@ nav.bot button[aria-current=page]{background:var(--soft);color:var(--accent)}
 details summary{cursor:pointer;color:var(--accent);font-weight:600;padding:10px 0 6px;min-height:44px}
 nav.bot button{font-size:.92rem}
 .ach td{vertical-align:top;line-height:1.5}.ach td:first-child{white-space:nowrap;width:1%;padding-right:12px}
+.fh{display:flex;gap:12px;align-items:center;margin-bottom:10px}
+.fchips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.fchips span{background:var(--soft);border-radius:14px;padding:4px 10px;font-size:.9rem}
+.plan{display:block;width:100%;height:auto;background:#fff;border:1px solid var(--line);border-radius:8px;font-family:var(--f-ui)}
+.prof{display:block;width:70%;max-width:260px;height:auto;margin:0 auto 10px;font-family:var(--f-ui)}
+.pl{border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:10px;background:#fff}
+.pl svg{display:block;width:100%;height:auto;font-family:var(--f-ui)}
+.plh{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.prog{font-family:var(--f-num);font-weight:600;font-size:1.25rem}
+.leg{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;font-size:.85rem;color:var(--muted);margin:8px 0}
+.leg i{width:14px;height:14px;display:inline-block;margin-right:-6px;border:1px solid var(--ink)}
+.ft{margin-top:10px}.ft td{vertical-align:top}
+.fnote{color:var(--muted);font-size:.88rem;margin:8px 0 0}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.ck{display:flex;gap:10px;align-items:center;min-height:44px;border-top:1px solid var(--line)}
+.ck input{width:22px;height:22px;flex:none}
+.colis{margin:0;padding:0;list-style:none;columns:2;column-gap:12px}
+.colis li{padding:5px 0;border-top:1px solid var(--line);break-inside:avoid;font-size:.92rem}
+.colis .n{color:var(--muted);margin-right:4px}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;margin-bottom:6px;position:sticky;top:0;background:var(--bg);z-index:3}
+.tabs button{border:1px solid var(--line);background:#fff;border-radius:18px;padding:8px 14px;white-space:nowrap;color:var(--ink);cursor:pointer;min-height:44px;font-weight:600}
+.tabs button[aria-selected=true]{background:var(--accent);border-color:var(--accent);color:#fff}
+.tt{display:inline-block;border-radius:10px;padding:2px 8px;font-size:.8rem;font-weight:600;white-space:nowrap}
+.ft th,.ft td{padding:6px 4px}
+.barin{margin:10px 0;max-width:260px}.barin .f{margin-top:0}
+.plz{cursor:zoom-in}.plz .sv{overflow:auto;-webkit-overflow-scrolling:touch}.plz.zoom{cursor:zoom-out}.plz.zoom .sv svg{width:320%}
+.card .tabs{background:#fff;top:0}.card #fiche .fh .code{font-size:2rem}
 </style>
 </head><body><div id="root"></div>
 <script>window.PSB_CFG={"url": "https://ostzcjudfunysqiwsvit.supabase.co", "key": "sb_publishable_l4gWGxqQdT4V8s_IiRPxQQ_wE3BoLeU"};</script>
@@ -13284,11 +13311,13 @@ function vProd(){if(!isG())return go(home());const C=aLancer(),n=Math.min(C.leng
    ${[...S.lots].sort((a,b)=>b.num-a.num).map(l=>{const O=l.orderIds.map(id=>S.orders.find(o=>o.id===id)).filter(o=>o&&!o.annule);
      return `<div class="card"><h2>Lot ${l.num} — lancé le ${fdate(l.at)} · fin prévue le ${fdate(finLot(l))}</h2>${O.map(o=>`<button class="it" data-sal="${o.id}"><span class="l1"><span><span class="n cd">${court(o)}</span> ${esc(o.client.nom)}</span><span>${tagsP(o)}</span></span>
        <span class="l2"><span>${esc(o.forme)} · ${fmt(mlOf(o),1)} ml · ${nbDone(o)}/${STEPS.length}</span>${dots(o)}</span></button>`).join('')}
-      <div class="row"><button class="btn sm" data-fl="${l.id}">Fiches du lot (PDF)</button></div><p class="muted" data-flm="${l.id}" style="font-size:.85rem;margin:6px 0 0" aria-live="polite"></p>
+      <p class="muted" style="font-size:.9rem;margin:6px 0">Fiches de fabrication : ${O.length-fabManque(l).length} / ${O.length} salon${O.length>1?'s':''} prêt${O.length-fabManque(l).length>1?'s':''}.</p>
+      <div class="row"><button class="btn sm" data-fl="${l.id}">Fiches du lot (PDF)</button>${fabManque(l).length?`<button class="btn sm pri" data-fab="${l.id}">Préparer les fiches de fabrication</button>`:''}</div><p class="muted" data-flm="${l.id}" style="font-size:.85rem;margin:6px 0 0" aria-live="polite"></p>
       <details><summary>Liste d’achat du lot</summary>${achats(O,l)}</details></div>`;}).join('')}`);
   if($('bLot'))$('bLot').onclick=e=>{const b=e.currentTarget;if(!b.dataset.armed){b.dataset.armed='1';b.textContent='Confirmer le lancement du lot '+num;return;}
     const L=C.slice(0,n),l={id:uid(),num,at:new Date().toISOString(),par:ME.id,fin:$('lFin').value||dflt,barre:Math.min(600,Math.max(100,+$('lBar').value||bar0)),orderIds:L.map(o=>o.id)};S.lots.push(l);L.forEach(o=>{o.lotId=l.id;prodOf(o);});Store.save();
-    flash('Lot '+num+' lancé : '+n+' salon'+(n>1?'s':'')+'. Imprime les fiches du lot.');vProd();};
+    flash('Lot '+num+' lancé : '+n+' salon'+(n>1?'s':'')+'. Imprime les fiches du lot.');vProd();if(ONLINE)fabLot(l);};
+  document.querySelectorAll('[data-fab]').forEach(b=>b.onclick=()=>{b.disabled=true;fabLot(S.lots.find(x=>x.id===b.dataset.fab)).then(r=>{if(!r)vProd();});});
   document.querySelectorAll('[data-fl]').forEach(b=>b.onclick=async()=>{const l=S.lots.find(x=>x.id===b.dataset.fl),O=l.orderIds.map(id=>S.orders.find(o=>o.id===id)).filter(o=>o&&!o.annule);
     const {blob,name}=fichePdf(O,'Fiches-lot-'+l.num+'.pdf');document.querySelector(`[data-flm="${l.id}"]`).textContent=await saveFile(name,blob,'application/pdf');});}
 
@@ -13311,7 +13340,7 @@ function vSal(){const a=ARG||{},o=S.orders.find(x=>x.id===a.id);if(!o||!o.lotId|
     <label class="f" for="pbN">Signaler un problème (pièce cassée, cote fausse, matière manquante…)</label><textarea id="pbN" rows="2"></textarea>
     <label class="f" for="pbF">Photo</label><input type="file" id="pbF" accept="image/*" capture="environment">
     <button class="btn bad full" id="bPb" style="margin-top:10px">Signaler un problème</button></div>
-   <div class="card"><h2>Fichiers de fabrication</h2><p class="muted" style="margin:0">Programmes CNC, étiquettes et croquis : ils arriveront ici quand le générateur sera branché.</p></div>
+   ${ficheCard(o,g,mine)}
    ${g?`<div class="card"><h2>Gérant</h2><div class="row"><button class="btn" id="bPrio">${p.prio?'Retirer la priorité':'Faire passer en priorité'}</button><button class="btn pri" id="bFiche">Fiche du salon (PDF)</button><button class="btn" data-go="ord" data-arg="${o.id}">Voir la commande</button><button class="btn" data-go="prod">Retour à la production</button></div><p id="fM" class="muted" style="font-size:.85rem;margin:8px 0 0" aria-live="polite"></p></div>`:`<button class="btn full" data-go="op">Retour à mon travail</button>`}`);
   const photoDe=async id=>{const f=$(id)&&$(id).files[0];if(!f)return '';try{return await shrink(f,560,0.5);}catch(e){return '';}};
   document.querySelectorAll('[data-ok]').forEach(b=>b.onclick=async()=>{const k=b.dataset.ok,s=stepOf(k);if(!dispo(o,k)||bloque(o))return vSal();
@@ -13331,7 +13360,27 @@ function vSal(){const a=ARG||{},o=S.orders.find(x=>x.id===a.id);if(!o||!o.lotId|
     p.pb.push({id:uid(),at:new Date().toISOString(),par:ME.id,note,photo});if(!Store.save()&&photo){p.pb[p.pb.length-1].photo='';Store.save();}
     flash('Problème signalé : le salon '+court(o)+' est bloqué et le gérant est prévenu.','err');vSal();};
   if(g){$('bPrio').onclick=()=>{p.prio=!p.prio;Store.save();flash(p.prio?'Salon '+court(o)+' passé en priorité.':'Priorité retirée.');vSal();};
-    $('bFiche').onclick=async()=>{const {blob,name}=fichePdf([o],'Fiche-salon-'+court(o)+'.pdf');$('fM').textContent=await saveFile(name,blob,'application/pdf');};}}
+    $('bFiche').onclick=async()=>{const {blob,name}=fichePdf([o],'Fiche-salon-'+court(o)+'.pdf');$('fM').textContent=await saveFile(name,blob,'application/pdf');};}
+  document.querySelectorAll('[data-ft]').forEach(b=>b.onclick=()=>{FTAB=b.dataset.ft;const y=window.scrollY;vSal();window.scrollTo(0,y);});
+  document.querySelectorAll('#fiche .plz').forEach(el=>el.onclick=()=>el.classList.toggle('zoom'));
+  const fl=$('fpL');if(fl){if(!g)fl.disabled=true;else fl.onchange=()=>{l.barre=Math.min(600,Math.max(100,Math.round(+fl.value)||250));Store.save();const y=window.scrollY;vSal();window.scrollTo(0,y);};}
+  if($('bFab'))$('bFab').onclick=async e=>{e.currentTarget.disabled=true;$('fabM').textContent='Calcul des fiches en cours…';const r=await Fab.prepare([o.id]);
+    if(r.ko.length)flash('Fiches non calculées : '+fabErr(r.ko[0][1])+'.','err');else flash('Fiches du salon '+court(o)+' prêtes.');if(VIEW==='sal'&&ARG&&ARG.id===o.id){const y=window.scrollY;vSal();window.scrollTo(0,y);}};}
+/* ---------- fiches de fabrication par poste ---------- */
+let FTAB=null;const FKEYS={cnc:['cnc','cncf'],carc:['carc'],tab:['tab'],face:['face'],plac:['plac']};
+const fabErr=m=>/introuvable|délai/.test(m)?(ONLINE?'le générateur ne s’est pas chargé (vérifie la connexion et réessaie)':'les fiches se calculent dans la version en ligne de l’app'):m;
+const fabManque=l=>l.orderIds.map(id=>S.orders.find(o=>o.id===id)).filter(o=>o&&!o.annule&&(!(o.prod&&o.prod.fab)||Fab.perime(o)));
+function ficheCard(o,g,mine){const f=o.prod&&o.prod.fab;
+  if(!f)return `<div class="card" id="cFab"><h2>Fiches de fabrication</h2>${g?`<p class="muted" style="margin:0 0 8px">Les fiches de ce salon ne sont pas encore calculées.</p><button class="btn pri" id="bFab">Préparer les fiches de ce salon</button><p id="fabM" class="muted" style="font-size:.85rem;margin:8px 0 0" aria-live="polite"></p>`:'<p class="muted" style="margin:0">Les fiches de ce salon sont en préparation par le gérant.</p>'}</div>`;
+  const keys=g?FP.POSTES.map(x=>x[0]):[...new Set(mine.flatMap(k=>FKEYS[k]||[]))];if(!keys.length)return '';
+  if(!keys.includes(FTAB)){const k0=mine.find(k=>dispo(o,k)&&FKEYS[k]);FTAB=(!g&&k0?FKEYS[k0][0]:keys[0]);}
+  FP.setL(0);const D=Fab.dossier(o),lab=Object.fromEntries(FP.POSTES.map(x=>[x[0],x[1]]));
+  return `<div class="card" id="cFab"><h2>Fiches de fabrication</h2>${Fab.perime(o)?`<div class="msg err">Les cotes ont changé depuis le calcul de ces fiches.${g?' Recalcule-les.':' Préviens le gérant.'}</div>`:''}
+    ${keys.length>1?`<div class="tabs" role="tablist" aria-label="Fiche">${keys.map(k=>`<button role="tab" data-ft="${k}" aria-selected="${k===FTAB}">${lab[k]}</button>`).join('')}</div>`:''}<div id="fiche" role="tabpanel">${FP.render(FTAB,D)}</div>
+    ${g?`<div class="row" style="margin-top:10px"><button class="btn sm" id="bFab">Recalculer les fiches</button></div><p id="fabM" class="muted" style="font-size:.85rem;margin:8px 0 0" aria-live="polite"></p>`:''}</div>`;}
+async function fabLot(l){const M=fabManque(l);if(!M.length)return null;const m=()=>document.querySelector(`[data-flm="${l.id}"]`);
+  const r=await Fab.prepare(M.map(o=>o.id),o=>{if(m())m().textContent='Calcul des fiches : salon '+court(o)+'…';});
+  if(VIEW==='prod'){if(r.ko.length)flash('Lot '+l.num+' : fiches non calculées pour '+r.ko.map(x=>x[0]||'le lot').join(', ')+' — '+fabErr(r.ko[0][1])+'.','err');else flash('Lot '+l.num+' : fiches de fabrication prêtes pour '+r.ok+' salon'+(r.ok>1?'s':'')+'.');vProd();}return r;}
 
 /* ---------- mon travail (opérateur) ---------- */
 function vOp(){if(!isOp())return go(home());const mine=ME.postes||[],P=enProd().filter(o=>!pret(o)),todo=[];
@@ -13370,6 +13419,167 @@ function fichePdf(L,name){const {jsPDF}=window.jspdf,d=new jsPDF({unit:'mm',form
     STEPS.forEach((s,j)=>{T(String(j+1),M+3,y,{b:1,s:11});T(s.lab,M+10,y,{b:1,s:11});T(s.g?'Vernisseur - validé par le gérant':(opsDe(s.k).join(' / ')||'-'),M+82,y,{s:9,c:GR});d.setDrawColor(29,37,35);d.rect(W-M-43,y-4.5,6,6);d.setDrawColor(207,214,211);d.line(W-M-28,y+1,W-M-2,y+1);d.line(M,y+3.5,W-M,y+3.5);y+=9.5;});
     T('Si le QR ne passe pas : taper le code '+court(o)+' dans l’app.',M,284,{s:10,b:1});T(cl(st.marque)+' · '+fdate(new Date()),W-M,284,{s:8,a:'right',c:GR});});
   return {blob:d.output('blob'),name};}
+
+/* ===== Fiches par poste — rendu à partir du dossier d'un salon (format téléphone) ===== */
+const FP=(()=>{
+const cm=(mm,d=1)=>(mm/10).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:d});
+const e=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const INK='#1d2523',AC='#1f5f8b',LINE='#cfd6d3',MUT='#5d6966',NOY='#6b4a32',CHE='#dcbb80';
+const legT=`<div class="leg"><i style="background:${NOY}"></i>Noyer<i style="background:${CHE}"></i>Chêne</div>`;
+const txt=(t,x,y,o={})=>`<text x="${x}" y="${y}" font-size="${o.s||130}" font-weight="${o.b?700:500}" fill="${o.c||INK}" text-anchor="${o.a||'middle'}" ${o.mono?'font-family="JetBrains Mono,monospace"':''} ${o.r?`transform="rotate(${o.r} ${x} ${y})"`:''} dominant-baseline="${o.bl||'central'}">${e(t)}</text>`;
+function plan(D,inner,label){const p=430,g=D.lg;
+  return `<svg viewBox="${-p} ${-p} ${D.W+2*p} ${D.H+p+180}" class="plan" role="img" aria-label="${e(label)}">
+   <path d="M0 ${g.rg?D.H:0} L0 0 L${D.W} 0 L${D.W} ${g.rd?D.H:0}" fill="none" stroke="${INK}" stroke-width="36" stroke-linejoin="miter"/>
+   ${txt('Fond '+g.fond,D.W/2,-230,{s:170,b:1})}${g.rg?txt('Gauche '+g.rg,-230,D.H/2,{s:170,b:1,r:-90}):''}${g.rd?txt('Droit '+g.rd,D.W+230,D.H/2,{s:170,b:1,r:90}):''}${inner}</svg>`;}
+const rects=(D,fill,stroke)=>D.banq.map(b=>`<rect x="${b.x0}" y="${b.y0}" width="${b.x1-b.x0}" height="${b.y1-b.y0}" fill="${fill}" stroke="${stroke}" stroke-width="10"/>`).join('')+D.ang.map(a=>`<polygon points="${a.p.map(q=>q.join(',')).join(' ')}" fill="${fill}" stroke="${stroke}" stroke-width="10"/>`).join('');
+const accs=D=>D.acc.map(a=>`<rect x="${a.x0}" y="${a.y0}" width="${a.x1-a.x0}" height="${a.y1-a.y0}" fill="${INK}"/>`).join('');
+let LB=null;const barL=D=>LB||D.barres.L,nParts=(f,L)=>Math.max(1,Math.ceil((Math.max(f.dos,f.av)+10)/L)),lgTxt=(f,L)=>{const l=Math.max(f.dos,f.av),n=nParts(f,L);return (n>1?n+' × ':'')+cm(l/n);};
+function barPlan(D,L){const P=[];D.faces.forEach(f=>{const l=Math.max(f.dos,f.av),n=nParts(f,L),id=f.id.replace('FA-','F');for(let i=0;i<n;i++)P.push({id:n>1?id+'abcdef'[i]:id,l:Math.round(l/n)});});
+  P.sort((a,b)=>b.l-a.l);const B=[];for(const q of P){let b=B.find(x=>x.reduce((t,y)=>t+y.l+10,0)+q.l<=L);if(!b){b=[];B.push(b);}b.push(q);}return B;}
+const barInput=D=>`<div class="barin"><label class="f" for="fpL">Longueur des barres reçues (cm)</label><input type="number" class="num" id="fpL" inputmode="numeric" min="100" max="600" step="5" value="${Math.round(barL(D)/10)}"></div>`;
+const head=(D,qui,quoi)=>`<div class="fh"><span class="code">${e(D.code)}</span><span><b>${e(qui)}</b><br>${e(quoi)}<br><span class="muted">${e(D.nom)}</span></span></div>`;
+const qui=(D,k,d)=>(D.qui&&D.qui[k])||d;
+const chips=L=>`<div class="fchips">${L.map(c=>`<span>${c}</span>`).join('')}</div>`;
+
+/* 1 — CNC panneaux */
+function cnc(D){const col={c:'#b9cfe0',t:'#e9c99b',g:'#c6dcbc'},ring=r=>'M'+r.map(a=>a.join(' ')).join('L')+'Z',cp3=D.cp3||[],nP=D.plaques.reduce((t,p)=>t+p.np,0)+cp3.reduce((t,p)=>t+p.np,0);
+  const pl=(p,lab)=>`<div class="pl plz"><div class="plh"><span class="prog">${e(D.code)}-${e(p.prog)}</span><span class="muted">${lab} · ${p.np} pièces</span></div>
+    <div class="sv"><svg viewBox="-10 -10 ${p.SL+20} ${p.SW+20}" role="img" aria-label="Plaque ${e(p.prog)} : ${p.np} pièces"><rect x="0" y="0" width="${p.SL}" height="${p.SW}" fill="#fff" stroke="${INK}" stroke-width="10"/>
+    ${p.it.map(q=>`<path d="${ring(q.o)}${(q.h||[]).map(ring).join('')}" fill="${col[q.u]}" fill-rule="evenodd" stroke="${INK}" stroke-width="3"/>${(q.p||[]).map(c=>`<circle cx="${c[0]}" cy="${c[1]}" r="${c[2]}" fill="${INK}"/>`).join('')}`).join('')}</svg></div></div>`;
+  if(!D.plaques.length)return head(D,qui(D,'cnc','Abdellatif'),'CNC panneaux')+chips([`<b>${D.nPcs}</b> pièces`,`<b>${D.nEtq}</b> étiquettes (carcasse)`,`<b>${cp3.length}</b> plaque CP 3`])+
+   `<div class="msg">Le plan des plaques CP 15 et les programmes .cnc de ce salon arrivent à la prochaine mise à jour de l’app.</div>`+cp3.map(p=>pl(p,`CP 3 · ${cm(p.SW,0)} × ${cm(p.SL,0)}`)+`<p class="fnote">Peaux de la table et des guéridons (les mêmes pour tous les salons) : hauteur dans la longueur de la plaque, 25 mm mini entre pièces.</p>`).join('');
+  return head(D,qui(D,'cnc','Abdellatif'),'CNC panneaux')+chips([`<b>${D.plaques.length}</b> plaques CP 15`,`<b>${cp3.length}</b> plaque${cp3.length>1?'s':''} CP 3`,`<b>${nP}</b> pièces`,`<b>${D.nEtq}</b> étiquettes`])+
+   `<div class="leg"><i style="background:${col.c}"></i>Carcasse (étiquetée)<i style="background:${col.t}"></i>Table<i style="background:${col.g}"></i>Guéridons</div><p class="fnote" style="margin:0">Touche une plaque pour l’agrandir.</p>`+
+   D.plaques.map(p=>pl(p,'CP 15')).join('')+cp3.map(p=>pl(p,`CP 3 · ${cm(p.SW,0)} × ${cm(p.SL,0)}`)+`<p class="fnote">Peaux : hauteur dans la longueur de la plaque, 25 mm mini entre pièces. Reste ${cm(p.SL-p.used-15,0)} cm de plaque.</p>`).join('')+
+   `<div class="row2"><button class="btn pri" disabled>Programmes .cnc</button><button class="btn" disabled>Étiquettes 60 × 40</button></div>`;}
+
+/* 2 — CNC faces (par lot) */
+function cncf(D){const L=barL(D),n=barPlan(D,L).length;
+  return head(D,qui(D,'cnc','Abdellatif'),'CNC faces')+barInput(D)+chips([`<b>${n}</b> barres de <b>${cm(L,0)}</b> cm`,'bois massif 8 × 4'])+
+   
+   `<svg viewBox="-230 -120 700 560" class="prof" role="img" aria-label="Profil bombé : hauteur 8 cm, épaisseur 4 cm au milieu, 1,5 cm aux bords">
+    <path d="M0 0 L60 0 Q260 160 60 320 L0 320 Z" fill="#e9c99b" stroke="${INK}" stroke-width="6"/>
+    <line x1="-60" y1="0" x2="-60" y2="320" stroke="${INK}" stroke-width="4"/><line x1="-80" y1="0" x2="-40" y2="0" stroke="${INK}" stroke-width="4"/><line x1="-80" y1="320" x2="-40" y2="320" stroke="${INK}" stroke-width="4"/>${txt('8',-125,160,{s:76,b:1})}
+    <line x1="0" y1="365" x2="160" y2="365" stroke="${INK}" stroke-width="4"/><line x1="0" y1="345" x2="0" y2="385" stroke="${INK}" stroke-width="4"/><line x1="160" y1="345" x2="160" y2="385" stroke="${INK}" stroke-width="4"/>${txt('4',80,410,{s:76,b:1})}
+    <line x1="0" y1="-40" x2="60" y2="-40" stroke="${INK}" stroke-width="4"/>${txt('1,5',30,-78,{s:62,b:1})}${txt('face',330,135,{s:46,c:MUT})}${txt('bombée',330,190,{s:46,c:MUT})}</svg>
+   <p class="fnote" style="text-align:center">Cotes du profil en cm. La coupe à longueur se fait à la pose.</p>`;}
+function bar(b,L,n){let x=0;return `<div class="pl"><div class="plh"><span class="prog">Barre ${n}</span><span class="muted">${cm(L,0)} cm</span></div><svg viewBox="-10 -10 ${L+20} 260" role="img" aria-label="Barre ${n}">
+   <rect x="0" y="0" width="${L}" height="240" fill="#f4f1ea" stroke="${INK}" stroke-width="8"/>${b.map(s=>{const r=`<rect x="${x}" y="0" width="${s.l}" height="240" fill="#e9c99b" stroke="${INK}" stroke-width="8"/>${txt(s.id.replace('FA-','F'),x+s.l/2,90,{s:s.l<500?78:92,b:1})}${txt(cm(s.l),x+s.l/2,180,{s:s.l<500?66:78,mono:1})}`;x+=s.l+10;return r;}).join('')}</svg></div>`;}
+
+/* 3 — Carcasses */
+function carc(D){const inner=D.banq.map(b=>{const cx=(b.x0+b.x1)/2,cy=(b.y0+b.y1)/2;return `<rect x="${b.x0}" y="${b.y0}" width="${b.x1-b.x0}" height="${b.y1-b.y0}" fill="#d6e2ec" stroke="${AC}" stroke-width="12"/>${txt(b.id,cx,cy-95,{s:210,b:1})}${txt(cm(b.len),cx,cy+120,{s:170,mono:1})}`;}).join('')+
+   D.ang.map(a=>{const cx=a.p.reduce((s,q)=>s+q[0],0)/3,cy=a.p.reduce((s,q)=>s+q[1],0)/3;return `<polygon points="${a.p.map(q=>q.join(',')).join(' ')}" fill="#e9c99b" stroke="${INK}" stroke-width="10"/>${txt(a.id,cx+(cx<D.W/2?330:-330),cy+250,{s:150,b:1})}`;}).join('')+accs(D);
+  return head(D,qui(D,'carc','Brahim'),'Montage des carcasses')+plan(D,inner,'Plan des caisses vues de dessus')+
+   `<table class="ft"><thead><tr><th>Caisse</th><th class="n">Long.</th><th class="n">Trav.</th><th class="n">Semelles</th><th>Dessus</th></tr></thead><tbody>${D.banq.map(b=>`<tr><td><b>${b.id}</b></td><td class="n">${cm(b.len)}</td><td class="n">${b.tr}</td><td class="n">${b.sv}</td><td>${b.f}</td></tr>`).join('')}
+    ${D.ang.length?`<tr><td><b>${D.ang.map(a=>a.id).join(', ')}</b></td><td colspan="4">angle incliné : 2 joues, 1 traverse, 1 avant, 1 dessus</td></tr>`:''}</tbody></table>
+   <p class="fnote">Chaque caisse : 1 paroi arrière + 1 paroi avant. Entre deux caisses : 1 éclisse EC.</p>`;}
+
+/* 4 — Table et guéridons (fiche standard) */
+function elev(t,nom){const W=t.pl,k=(W+760)/1020,ox=W/2,top=Math.round(110*k),y0=top+t.ep,ys=y0+(t.h-t.hb),yb=y0+t.h,tot=t.hs+t.h+t.ep,
+   trap=(ra,ya,rb,yb2,f)=>`<polygon points="${ox-ra},${ya} ${ox+ra},${ya} ${ox+rb},${yb2} ${ox-rb},${yb2}" fill="${f}" stroke="${INK}" stroke-width="6"/>`,
+   lis=x=>{const w=t.lis/2,xa=ox+x*t.rs,xb=ox+x*t.rb;return `<polygon points="${xa-w},${ys} ${xa+w},${ys} ${xb+w},${yb} ${xb-w},${yb}" fill="${CHE}" stroke="${INK}" stroke-width="4"/>`;},
+   dim=(x,ya,yb2,v)=>`<line x1="${x}" y1="${ya}" x2="${x}" y2="${yb2}" stroke="${INK}" stroke-width="5"/><line x1="${x-18*k}" y1="${ya}" x2="${x+18*k}" y2="${ya}" stroke="${INK}" stroke-width="5"/><line x1="${x-18*k}" y1="${yb2}" x2="${x+18*k}" y2="${yb2}" stroke="${INK}" stroke-width="5"/>${txt(v,x+(x<ox?-70:95)*k,(ya+yb2)/2,{s:58*k,b:1})}`;
+  return `<div class="pl"><div class="plh"><span class="prog">${nom}</span><span class="muted">hauteur ${cm(tot)} cm</span></div><svg viewBox="${-340} 0 ${W+760} ${Math.round(yb+t.hs+150*k)}" role="img" aria-label="${nom} : plateau ${cm(W,0)} cm, hauteur ${cm(tot)} cm">
+   <rect x="0" y="${top}" width="${W}" height="${t.ep}" fill="${NOY}" stroke="${INK}" stroke-width="6"/>${trap(t.rh1,y0,t.rh0,ys,CHE)}${trap(t.rs,ys,t.rb,yb,NOY)}${lis(-0.66)}${lis(0.66)}
+   <rect x="${ox-t.ds/2}" y="${yb}" width="${t.ds}" height="${t.hs}" fill="${NOY}" stroke="${INK}" stroke-width="6"/>
+   ${txt('Ø '+cm(W,0),ox,52*k,{s:70*k,b:1})}${txt('Ø '+cm(2*t.rh1,0),ox,y0+(ys-y0)/2,{s:50*k,b:1})}${txt('Ø '+cm(2*t.rs,0),ox,ys+62*k,{s:50*k,b:1,c:'#fff'})}${txt('Ø '+cm(2*t.rb,0),ox,yb-45*k,{s:50*k,b:1,c:'#fff'})}
+   ${dim(ox-t.rb-70*k,y0,ys,cm(t.h-t.hb,0))}${dim(ox-t.rb-70*k,ys,yb,cm(t.hb,0))}${dim(W+90*k,top,yb+t.hs,cm(tot))}
+   ${txt('socle Ø '+cm(t.ds,0),ox,yb+t.hs+75*k,{s:46*k,c:MUT})}</svg></div>`;}
+function tab(D){return head({code:'STD',nom:'Fiche standard, la même pour tous les salons'},qui(D,'tab','Yassine · Youssef'),'Table + 2 guéridons')+chips(['<b>1</b> table','<b>2</b> guéridons','sans étiquettes'])+legT+elev(D.table,'Table')+elev(D.guer,'Guéridon × 2');}
+
+/* 5 — Faces + accoudoirs */
+function facePlan(D,angles,col){const cxr=D.W/2,cyr=D.H*0.62;const F=D.faces.map(f=>{const mx=(f.a[0]+f.b[0])/2,my=(f.a[1]+f.b[1])/2,dx=f.b[0]-f.a[0],dy=f.b[1]-f.a[1],l=Math.hypot(dx,dy);let nx=-dy/l,ny=dx/l;if((cxr-mx)*nx+(cyr-my)*ny<0){nx=-nx;ny=-ny;}
+    const dg=Math.abs(nx)>.2&&Math.abs(ny)>.2,sg=dg?-1:1,n=f.id.replace('FA-',''),bx=mx+sg*nx*(dg?160:190),by=my+sg*ny*(dg?160:190),tx=mx+sg*nx*(dg?500:Math.abs(nx)>.9?610:400),ty=my+sg*ny*(dg?430:Math.abs(ny)>.9?400:330);
+    return `<line x1="${f.a[0]}" y1="${f.a[1]}" x2="${f.b[0]}" y2="${f.b[1]}" stroke="${col||AC}" stroke-width="60" stroke-linecap="butt"/><circle cx="${bx}" cy="${by}" r="115" fill="${INK}"/>${txt(n,bx,by,{s:150,b:1,c:'#fff'})}${txt(cm(Math.max(f.dos,f.av)),tx,ty,{s:150,mono:1,b:1})}${Array.from({length:nParts(f,barL(D))-1},(_,i)=>{const t=(i+1)/nParts(f,barL(D)),px=f.a[0]+dx*t,py=f.a[1]+dy*t;return `<line x1="${px-nx*95}" y1="${py-ny*95}" x2="${px+nx*95}" y2="${py+ny*95}" stroke="${INK}" stroke-width="26"/>`;}).join('')}`;}).join('');
+  let J='';if(angles){const seen={};D.faces.forEach(f=>[[f.a,f.c[0]],[f.b,f.c[1]]].forEach(([p,c])=>{const k=p.join(',');if(!c||seen[k])return;seen[k]=1;const vx=p[0]-cxr,vy=p[1]-cyr,l=Math.hypot(vx,vy);J+=`<circle cx="${p[0]}" cy="${p[1]}" r="38" fill="#a4501b"/>`+txt(String(c).replace('.',',')+'°',p[0]+vx/l*230,p[1]+vy/l*150,{s:125,b:1,c:'#a4501b'});}));}
+  return plan(D,rects(D,'#eef1ef',LINE)+(col?D.acc.map(a=>`<rect x="${a.x0}" y="${a.y0}" width="${a.x1-a.x0}" height="${a.y1-a.y0}" fill="${NOY}"/>`).join(''):accs(D))+F+J,'Plan des faces vues de dessus');}
+function face(D){const a=D.acc[0];
+  return head(D,qui(D,'face','Youssef'),'Pose des faces + accoudoirs')+facePlan(D,true)+
+   `<div class="leg"><i style="background:${AC}"></i>Face bombée<i style="background:#a4501b;border-radius:50%"></i>Angle de coupe<i style="background:${INK}"></i>Accoudoir</div>
+   <table class="ft"><thead><tr><th>N°</th><th>Morceau</th><th class="n">Grand côté</th><th class="n">Coupes</th></tr></thead><tbody>${D.faces.map(f=>`<tr><td><b>F${f.id.replace('FA-','')}</b></td><td>${e(f.nm)}</td><td class="n">${lgTxt(f,barL(D))}</td><td class="n">${f.c.map(c=>c?String(c).replace('.',',')+'°':'droite').join(' / ')}</td></tr>`).join('')}</tbody></table>
+   <p class="fnote">Sous chaque morceau : la bande CP 15 de 4 cm, étiquetée FA-1 à FA-${D.faces.length}.</p>`+
+   barInput(D)+barPlan(D,barL(D)).map((b,i)=>bar(b,barL(D),i+1)).join('')+
+   `<div class="pl"><div class="plh"><span class="prog">2 accoudoirs</span></div><svg viewBox="-200 -40 1300 760" role="img" aria-label="Accoudoir : longueur ${cm(a.l)} cm, épaisseur ${cm(a.w)} cm, dessus à ${cm(a.h,0)} cm du sol">
+    <rect x="0" y="120" width="${a.l}" height="${a.h}" fill="#d6e2ec" stroke="${INK}" stroke-width="8"/><line x1="-120" y1="${120+a.h}" x2="${a.l+260}" y2="${120+a.h}" stroke="${INK}" stroke-width="10"/>
+    ${txt(cm(a.l),a.l/2,60,{s:80,b:1})}<line x1="${a.l+110}" y1="120" x2="${a.l+110}" y2="${120+a.h}" stroke="${INK}" stroke-width="6"/>${txt(cm(a.h,0),a.l+210,120+a.h/2,{s:80,b:1})}${txt('épaisseur '+cm(a.w,0),a.l/2,120+a.h/2,{s:64})}${txt('sol',-60,120+a.h+60,{s:50,c:MUT})}</svg></div>`;}
+
+/* 6 — Placage */
+function plac(D){const ml=D.faces.reduce((s,f)=>s+Math.max(f.dos,f.av),0),a=D.acc[0],T=c=>`<span class="tt" style="background:${c==='n'?NOY:CHE};color:${c==='n'?'#fff':INK}">${c==='n'?'Noyer':'Chêne'}</span>`;
+  return head(D,qui(D,'plac','Ayoub'),'Placage')+legT+facePlan(D,false,CHE)+
+   `<table class="ft"><thead><tr><th>À plaquer</th><th class="n">Nb</th><th class="n">Cotes (cm)</th><th>Teinte</th></tr></thead><tbody>
+    <tr><td><b>Faces bombées</b><br><span class="muted">fil en longueur</span></td><td class="n">${D.faces.length}</td><td class="n">${(ml/1000).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})} m × 8</td><td>${T('c')}</td></tr>
+    <tr><td><b>Accoudoirs</b></td><td class="n">${D.acc.length}</td><td class="n">${cm(a.l)} × ${cm(a.w,0)} × ${cm(a.h-117.5,0)}</td><td>${T('n')}</td></tr>
+    <tr><td><b>Plateaux</b><br><span class="muted">table + 2 guéridons</span></td><td class="n">3</td><td class="n">Ø ${cm(D.table.pl,0)} · Ø ${cm(D.guer.pl,0)}</td><td>${T('n')}</td></tr>
+    <tr><td><b>Lames des fûts</b></td><td class="n">9</td><td class="n">h ${cm(D.table.hb,0)} · h ${cm(D.guer.hb,0)}</td><td>${T('n')}</td></tr>
+    <tr><td><b>Entre les lames</b></td><td class="n">9</td><td class="n">larg. ${cm(D.table.lis,0)} · ${cm(D.guer.lis,0)}</td><td>${T('c')}</td></tr>
+    <tr><td><b>Cônes du haut</b></td><td class="n">3</td><td class="n">h ${cm(D.table.h-D.table.hb,0)} · h ${cm(D.guer.h-D.guer.hb,0)}</td><td>${T('c')}</td></tr></tbody></table>`+elev(D.table,'Table')+elev(D.guer,'Guéridon × 2');}
+
+/* 7 — Vernis, contrôle, emballage */
+function vern(D){const col=[...D.banq.map(b=>'Caisse '+b.id),...D.ang.map(a=>'Angle '+a.id),...D.acc.map(a=>'Accoudoir '+a.nm.toLowerCase()),'Table','Guéridon 1','Guéridon 2','Sachet de quincaillerie'];
+  return head(D,'Vernisseur','Vernis · contrôle · emballage')+legT+
+   `<table class="ft"><thead><tr><th>À vernir</th><th class="n">Nb</th></tr></thead><tbody><tr><td>Caisses et angles : face bombée en chêne</td><td class="n">${D.banq.length+D.ang.length}</td></tr><tr><td>Accoudoirs : noyer</td><td class="n">${D.acc.length}</td></tr><tr><td>Table : noyer, cône haut et entre-lames en chêne</td><td class="n">1</td></tr><tr><td>Guéridons : comme la table</td><td class="n">2</td></tr></tbody></table>`+elev(D.table,'Table')+`<span></span>
+   <div class="pl"><div class="plh"><span class="prog">Contrôle</span><span class="muted">validé par le gérant</span></div>${['Cotes du plan : fond '+D.lg.fond+(D.lg.rg?' · gauche '+D.lg.rg:'')+(D.lg.rd?' · droit '+D.lg.rd:''),'Caisses stables, vérins posés','Teinte et vernis réguliers','Toutes les pièces présentes'].map(c=>`<label class="ck"><input type="checkbox"> ${e(c)}</label>`).join('')}</div>
+   <div class="pl"><div class="plh"><span class="prog">${col.length} colis</span><span class="muted">étiquette 100 × 100 avec QR</span></div><ol class="colis">${col.map((c,i)=>`<li><span class="n">${i+1}/${col.length}</span> ${e(c)}</li>`).join('')}</ol></div>`;}
+return {POSTES:[['cnc','CNC plaques',cnc],['cncf','CNC faces',cncf],['carc','Carcasses',carc],['tab','Table',tab],['face','Faces',face],['plac','Placage',plac],['vern','Vernis',vern]],render:(k,D)=>({cnc,cncf,carc,tab,face,plac,vern}[k])(D),setL:v=>{LB=v>=1000&&v<=6000?v:null;},barPlan};})();
+
+/* plaque CP 3 standard : 27 peaux de la table et des 2 guéridons, 122 × 300 */
+const CP3STD=[{"n":1,"prog":"CP3","SL":3000,"SW":1220,"used":2450,"np":27,"nh":0,"npc":0,"it":[{"u":"t","o":[[58,676],[38,591],[26,512],[18,441],[15,353],[17,274],[26,179],[38,100],[58,15],[480,127],[469,173],[459,235],[454,282],[451,340],[453,398],[458,450],[467,508],[480,564]]},{"u":"t","o":[[683,539],[702,624],[715,703],[722,774],[726,862],[724,941],[715,1036],[702,1115],[683,1200],[261,1088],[272,1042],[282,980],[287,933],[290,875],[288,817],[283,764],[274,707],[261,651]]},{"u":"t","o":[[752,720],[732,635],[720,556],[712,485],[709,397],[711,318],[720,223],[732,144],[752,59],[1174,171],[1163,217],[1153,279],[1148,326],[1145,384],[1147,442],[1152,494],[1161,552],[1174,608]]},{"u":"g","o":[[762,1195],[752,1108],[749,1028],[752,932],[762,845],[1123,899],[1117,954],[1114,1009],[1116,1075],[1123,1141]]},{"u":"g","o":[[1504,673],[1514,760],[1517,840],[1514,936],[1504,1023],[1143,969],[1149,914],[1152,859],[1150,793],[1143,727]]},{"u":"g","o":[[1222,687],[1212,600],[1209,520],[1212,424],[1222,337],[1583,391],[1577,446],[1574,501],[1576,567],[1583,633]]},{"u":"g","o":[[1598,15],[1608,102],[1611,182],[1608,278],[1598,365],[1237,311],[1243,256],[1246,201],[1244,135],[1237,69]]},{"u":"g","o":[[1554,1149],[1544,1062],[1541,982],[1544,886],[1554,799],[1915,853],[1909,908],[1906,963],[1908,1029],[1915,1095]]},{"u":"g","o":[[1970,483],[1980,570],[1983,650],[1980,746],[1970,833],[1609,779],[1615,724],[1618,669],[1616,603],[1609,537]]},{"u":"t","o":[[236,679],[245,717],[254,763],[260,810],[262,857],[260,904],[256,944],[249,990],[236,1044],[51,990],[59,957],[64,930],[68,897],[69,864],[68,831],[65,798],[59,765],[51,733]]},{"u":"t","o":[[1665,380],[1655,342],[1646,295],[1641,248],[1639,201],[1640,154],[1644,115],[1652,68],[1665,15],[1850,69],[1843,96],[1836,128],[1833,161],[1831,194],[1832,228],[1836,261],[1841,294],[1850,326]]},{"u":"t","o":[[1891,380],[1881,342],[1872,295],[1867,248],[1865,201],[1866,154],[1870,115],[1878,68],[1891,15],[2076,69],[2069,96],[2062,128],[2059,161],[2057,194],[2058,228],[2062,261],[2067,294],[2076,326]]},{"u":"t","o":[[2129,1145],[2129,1205],[1693,1194],[1693,1156]]},{"u":"t","o":[[1975,1121],[1975,1061],[2412,1072],[2412,1110]]},{"u":"t","o":[[2449,985],[2449,1045],[2013,1034],[2013,996]]},{"u":"g","o":[[2045,967],[2045,917],[2410,926],[2410,958]]},{"u":"g","o":[[2372,847],[2372,897],[2007,888],[2007,856]]},{"u":"g","o":[[2045,827],[2045,777],[2410,786],[2410,818]]},{"u":"g","o":[[2374,707],[2374,757],[2009,748],[2009,716]]},{"u":"g","o":[[2047,687],[2047,637],[2412,646],[2412,678]]},{"u":"g","o":[[2374,567],[2374,617],[2009,608],[2009,576]]},{"u":"g","o":[[487,438],[481,392],[479,345],[481,298],[487,251],[652,280],[648,307],[646,339],[648,377],[652,410]]},{"u":"g","o":[[682,69],[688,116],[690,163],[688,210],[682,256],[517,228],[521,201],[523,168],[521,130],[517,98]]},{"u":"g","o":[[1080,677],[1086,724],[1088,771],[1086,818],[1080,864],[915,836],[919,809],[921,776],[919,738],[915,706]]},{"u":"g","o":[[1157,1186],[1151,1140],[1149,1093],[1151,1046],[1157,999],[1322,1028],[1318,1055],[1316,1087],[1318,1125],[1322,1158]]},{"u":"g","o":[[2095,290],[2089,244],[2087,197],[2089,150],[2095,103],[2260,132],[2256,159],[2254,191],[2256,229],[2260,262]]},{"u":"g","o":[[2268,289],[2274,336],[2276,383],[2274,430],[2268,476],[2103,448],[2107,421],[2109,388],[2107,350],[2103,318]]}]}];
+
+/* ===== Fiches de fabrication : le générateur de salon tourne dans l'app (cadre caché), sans rien connecter ===== */
+const Fab=(()=>{
+  const GENV='19p1',CFG0={sty:0,P:750,em:300,ang:1,c:300,eS:15,SL:2440,SW:1220,fm:2,F:120,hP:40,endG:1,endD:1,accG:1,accD:1,acT:2,acSame:1,acH:382.5,tPl:20,hPl:90};
+  const TABLE={pl:1100,ep:30,rb:325,rs:206.5,rh0:176.5,rh1:120,hb:420,h:620,ds:610,hs:15,lis:60},GUER={pl:500,ep:30,rb:170,rs:110,rh0:90,rh1:60,hb:360,h:540,ds:300,hs:15,lis:50};
+  let fr=null,ready=null,busy=false;
+  function load(){if(ready)return ready;
+    ready=new Promise((res,rej)=>{const f=document.createElement('iframe');fr=f;f.setAttribute('aria-hidden','true');f.tabIndex=-1;f.style.cssText='position:fixed;left:-3000px;top:0;width:1100px;height:700px;border:0;visibility:hidden';
+      let done=false;const fail=m=>{if(done)return;done=true;clearTimeout(to);ready=null;f.remove();fr=null;rej(new Error(m));},to=setTimeout(()=>fail('délai dépassé'),45000);
+      f.onload=()=>{const t0=Date.now();(function wait(){if(done)return;let ok=false;try{ok=f.contentWindow.eval('typeof buildS==="function"&&typeof DEF==="object"');}catch(e){return fail('générateur introuvable');}
+          if(ok){done=true;clearTimeout(to);res(f.contentWindow);}else if(Date.now()-t0>25000)fail('générateur introuvable');else setTimeout(wait,120);})();};
+      f.onerror=()=>fail('générateur introuvable');f.src='gen/salon.html?v='+GENV;document.body.appendChild(f);});
+    return ready;}
+  // exécuté dans le cadre du générateur : construit le salon et renvoie ce qui sert aux fiches
+  const INSIDE=`(function(c){P={...DEF,...c};R=buildS(P);var i=R.info,u={},n=0;R.parts.forEach(function(p){if(p.only3d)return;if(p.mat==='SOM')n++;var q=u[p.unit]=u[p.unit]||{};q[p.ref]=(q[p.ref]||0)+1;});
+    return JSON.stringify({mods:(i.mods||[]).map(function(m){return {id:m.id,len:m.len,br:m.br};}),seats:i.seats,acc:i.acc,D:i.D,Lx:i.Lx,Ly:i.Ly,hasL:!!i.hasL,hasR:!!i.hasR,units:u,nCarc:n,fl:(i.faces||[]).map(function(f){return f.len;}),warn:R.warn||[]});})`;
+  const r1=x=>Math.round(x*10)/10;
+  function build(o,g){const lg=lgOf(o),W=g.Lx,fx=x=>r1(W-x),inc=CFG0.c+CFG0.eS*(2-Math.SQRT2),S=g.seats,by=b=>S.filter(s=>s.br===b);
+    const B=by('B'),L=by('L'),Rr=by('R'),xb0=Math.min(...B.map(s=>s.x0)),xb1=Math.max(...B.map(s=>s.x1)),yb0=Math.min(...B.map(s=>s.y0)),yb1=Math.max(...B.map(s=>s.y1));
+    const banq=g.mods.map((m,k)=>{const s=S[k],u=g.units[m.id]||{},n=m.id.slice(1);return {id:'C'+n,len:r1(m.len),br:m.br,x0:fx(s.x1),y0:r1(s.y0),x1:fx(s.x0),y1:r1(s.y1),tr:u.TR||0,sv:u.SV||0,ar:u.AR||0,av:u.AV||0,f:'F'+n};});
+    // ligne du dos des faces (devant des caisses), du bout droit au bout gauche, en cotes du générateur
+    const pts=[],nm=[],ang=[];
+    if(g.hasR&&Rr.length){const xr0=Math.min(...Rr.map(s=>s.x0)),xr1=Math.max(...Rr.map(s=>s.x1)),yr1=Math.max(...Rr.map(s=>s.y1));pts.push([xr0,yr1],[xr1,yr1],[xr1,yb1+inc],[xr1+inc,yb1]);nm.push('boutD','retD','angD');ang.push({k:'D',p:[[xr1,yb1],[xr1+inc,yb1],[xr1,yb1+inc]]});}
+    else{pts.push([xb0,yb0],[xb0,yb1]);nm.push('boutD');}
+    nm.push('fond');
+    if(g.hasL&&L.length){const xl0=Math.min(...L.map(s=>s.x0)),xl1=Math.max(...L.map(s=>s.x1)),yl1=Math.max(...L.map(s=>s.y1));pts.push([xl0-inc,yb1],[xl0,yb1+inc],[xl0,yl1],[xl1,yl1]);nm.push('angG','retG','boutG');ang.unshift({k:'G',p:[[xl0,yb1],[xl0-inc,yb1],[xl0,yb1+inc]]});}
+    else{pts.push([xb1,yb1],[xb1,yb0]);nm.push('boutG');}
+    const E=40,n=nm.length,dir=k=>{const dx=pts[k+1][0]-pts[k][0],dy=pts[k+1][1]-pts[k][1],l=Math.hypot(dx,dy);return [dx/l,dy/l,l];},
+      turn=k=>{const a=dir(k),b=dir(k+1);return Math.atan2(a[0]*b[1]-a[1]*b[0],a[0]*b[0]+a[1]*b[1]);};   // > 0 : tourne à gauche (côté de la face)
+    const LAB={fond:'Fond',retG:'Retour gauche',retD:'Retour droit',angG:'Angle gauche',angD:'Angle droit',boutG:'Bout gauche',boutD:'Bout droit'},ORD=['fond','retG','retD','angG','angD','boutG','boutD'];
+    const faces=nm.map((k,i)=>{const t0=i?turn(i-1):0,t1=i<n-1?turn(i):0,dos=dir(i)[2],av=dos-E*Math.tan(t0/2)-E*Math.tan(t1/2);
+      return {k,nm:LAB[k],a:[fx(pts[i][0]),r1(pts[i][1])],b:[fx(pts[i+1][0]),r1(pts[i+1][1])],dos:r1(dos),av:r1(av),c:[r1(Math.abs(t0)*90/Math.PI),r1(Math.abs(t1)*90/Math.PI)]};})
+      .sort((a,b)=>ORD.indexOf(a.k)-ORD.indexOf(b.k)).map((f,i)=>{const {k,...r}=f;return {id:'FA-'+(i+1),...r};});
+    const acc=['G','D'].filter(k=>g.acc&&g.acc[k]).map(k=>{const a=g.acc[k],b=a.bb;return {id:'AC'+k,nm:k==='G'?'Gauche':'Droit',x0:fx(b[2]),y0:r1(b[1]),x1:fx(b[0]),y1:r1(b[3]),l:Math.round(Math.max(b[2]-b[0],b[3]-b[1])),w:a.W,h:500};});
+    return {v:1,gen:GENV,at:new Date().toISOString(),W:Math.round(W),H:Math.round(Math.max(g.Ly,CFG0.P+250)),P:CFG0.P,lgc:{fond:+lg.fond||0,rg:+lg.rg||0,rd:+lg.rd||0},
+      banq,ang:ang.map((a,i)=>({id:'AN'+(i+1),p:a.p.map(q=>[fx(q[0]),r1(q[1])])})),acc,faces,nEtq:g.nCarc,nPcs:g.nCarc+87};}
+  async function make(o){const lg=lgOf(o),F=+lg.fond||0,G=+lg.rg||0,D=+lg.rd||0;
+    if(!(F>0)||(o.forme!=='Droit'&&!(G>0))||(o.forme==='U'&&!(D>0)))throw new Error('cotes incomplètes');
+    const W=await load(),c={...CFG0,forme:o.forme==='U'?3:o.forme==='L'?1:0,L2:F*10,L1:o.forme==='Droit'?0:G*10,L3:o.forme==='U'?D*10:0};
+    let g;W.__fabArg=c;try{g=JSON.parse(W.eval(INSIDE+'(window.__fabArg)'));}catch(e){throw new Error('cotes refusées par le générateur ('+(e.message||e)+')');}
+    if(!g.mods.length||!g.seats.length||g.mods.length!==g.seats.length)throw new Error('cotes refusées par le générateur');
+    const mn=Math.min(...g.fl);if(!(mn>=200))throw new Error('cotes trop petites pour un salon en '+o.forme+' (une face ferait '+Math.round(mn/10)+' cm)');
+    return build(o,g);}
+  // dossier complet pour l'affichage d'une fiche
+  function dossier(o){const f=o.prod&&o.prod.fab;if(!f)return null;const l=lotOf(o),lg=lgOf(o),q={};POSTES.forEach(p=>{q[p.k]=opsDe(p.k).join(' · ');});
+    return {...f,code:court(o),nom:o.client.nom+' · '+o.code,forme:o.forme,lg:{fond:+lg.fond||0,rg:+lg.rg||0,rd:+lg.rd||0},SL:2440,SW:1220,barres:{L:((l&&l.barre)||S.settings.barre||250)*10},plaques:f.plaques||[],cp3:CP3STD,table:TABLE,guer:GUER,qui:q};}
+  // les cotes ont-elles changé depuis le calcul ?
+  const perime=o=>{const f=o.prod&&o.prod.fab,lg=lgOf(o);return !!f&&(f.gen!==GENV||!f.lgc||f.lgc.fond!==(+lg.fond||0)||f.lgc.rg!==(+lg.rg||0)||f.lgc.rd!==(+lg.rd||0));};
+  // prépare les fiches d'une liste de salons, l'un après l'autre
+  async function prepare(ids,onStep){if(busy)return {ok:0,ko:[['','calcul déjà en cours']]};busy=true;let ok=0;const ko=[];
+    try{for(const id of ids){const o=S.orders.find(x=>x.id===id);if(!o)continue;if(onStep)onStep(o);
+        try{const f=await make(o);prodOf(o).fab=f;ok++;Store.save();}catch(e){ko.push([court(o),e.message||String(e)]);if(/introuvable|délai/.test(e.message||''))break;}}}
+    finally{busy=false;}
+    return {ok,ko};}
+  return {make,build,dossier,prepare,perime,load,busy:()=>busy,GENV,CFG0};
+})();
 
 
 /* ===== Version en ligne : base partagée (Supabase), connexion par téléphone + code, synchronisation ===== */
