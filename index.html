@@ -12934,7 +12934,7 @@ const telWa=t=>{let s=telN(t);if(s.startsWith('00'))s=s.slice(2);if(s.startsWith
 
 /* ---------- données ---------- */
 const DEFSET={base:14900,mlBase:10,pMl:600,pVit:800,acPct:75,resH:48,quota:108,rythme:7,liv0:'2026-12-21',arr:1,tolMl:0,
-  barre:250,plCh:10,colleKg:4,blancheKg:1,sintoKg:0.25,patinsT:12,att:1,relJ:5,del:{cnc:2,carc:4,tab:4,face:5,plac:6,vern:9,emb:10},showrooms:[{id:'s1',nom:'Agadir',adresse:'272 Av. Mohammed V, Dcheira El Jihadia'},{id:'s2',nom:'Casablanca',adresse:'Bd Haïfa'}],sv:6,
+  barre:250,plCh:10,colleKg:4,blancheKg:1,sintoKg:0.25,patinsT:12,att:300,relJ:5,del:{cnc:2,carc:4,tab:4,face:5,plac:6,vern:9,emb:10},showrooms:[{id:'s1',nom:'Agadir',adresse:'272 Av. Mohammed V, Dcheira El Jihadia'},{id:'s2',nom:'Casablanca',adresse:'Bd Haïfa'}],sv:6,
   zones:[{id:'z1',nom:'Agadir, Inezgane, Aït Melloul',prix:0},{id:'z2',nom:'Région d’Agadir',prix:0},{id:'z3',nom:'Autre ville',prix:0}],
   marque:'ALMAZARDECOR',adresse:'Showroom Agadir — 272 Av. Mohammed V, Dcheira El Jihadia',tel:'06 47 36 72 72',url:''};
 const LSK='almazar_promo_bois_app_v1';
@@ -13203,8 +13203,9 @@ function vSet(){if(!isG())return go('list');const st=S.settings;
    <div class="card"><h2>Délais</h2><p class="muted" style="font-size:.85rem;margin:0 0 6px">Jours travaillés : du lundi au samedi (le samedi, la journée finit à 15 h). Chaque étape doit être finie tant de jours travaillés après le lancement du lot. Les lots déjà lancés gardent leurs dates.</p>
     <div class="g2">${STEPS.map(x=>`<div><label class="f" for="d_${x.k}">${x.lab} (jours)</label><input type="number" class="num" id="d_${x.k}" data-del="${x.k}" min="1" max="60" step="1" value="${delSet()[x.k]}"></div>`).join('')}${num('relJ','Relevé des cotes après l’acompte (jours)','jours')}</div></div>
    <div class="card"><h2>Achats par salon</h2><div class="g2">${num('barre','Barres de face reçues (cm)','cm')}${num('plCh','Chutes de placage (%)','%')}${num('colleKg','Colle de placage par salon (kg)','kg')}${num('blancheKg','Colle blanche à bois par salon (kg)','kg')}${num('sintoKg','Sintofer de rebouchage par salon (kg)','kg')}${num('patinsT','Patins de table et guéridons par salon','patins')}</div></div>
-   <div class="card"><h2>Programmes CNC</h2><label class="f" for="s_att">Attaches sur les pièces (pour qu’elles ne sautent pas)</label><select id="s_att"><option value="1" ${st.att===0?'':'selected'}>Oui — 10 mm, 2 mm d’épaisseur laissée (1 mm sur le CP 3)</option><option value="0" ${st.att===0?'selected':''}>Non — sans attaches</option></select>
-    <p class="muted" style="font-size:.85rem;margin:8px 0 0">Marge 15 mm, 8 mm entre les pièces. Chaque programme est recontrôlé avant d’être donné à l’opérateur.</p></div>
+   <div class="card"><h2>Programmes CNC</h2><label class="f" for="s_att">Attaches sur les pièces (pour qu’elles ne sautent pas)</label><select id="s_att"><option value="p" ${st.att!==0&&st.att!==1?'selected':''}>Seulement sur les petites pièces</option><option value="1" ${st.att===1?'selected':''}>Sur toutes les pièces</option><option value="0" ${st.att===0?'selected':''}>Aucune attache</option></select>
+    <div id="attP" ${st.att===0||st.att===1?'hidden':''}><label class="f" for="s_attS">Petite pièce = moins de (cm²)</label><div class="inl"><input type="number" class="num" id="s_attS" inputmode="numeric" min="50" step="50" value="${st.att>=50?st.att:300}"><span class="muted">cm² — ou moins de 6 cm de large</span></div></div>
+    <p class="muted" style="font-size:.85rem;margin:8px 0 0">Attache : 10 mm de long, 2 mm d’épaisseur laissée (1 mm sur le CP 3). Marge 15 mm, 8 mm entre les pièces. Chaque programme est recontrôlé avant d’être donné à l’opérateur.</p></div>
    <div class="card"><h2>Transport par zone</h2><div id="zs">${st.zones.map((z,i)=>z.off?'':`<div class="row" style="margin-bottom:6px"><input type="text" data-z="${i}" data-zk="nom" value="${esc(z.nom)}" aria-label="Nom de la zone ${i+1}" style="flex:2 1 160px"><input type="number" class="num" data-z="${i}" data-zk="prix" value="${z.prix}" aria-label="Prix du transport zone ${i+1} (DH)" style="flex:1 1 80px"><button class="btn sm bad" data-zd="${i}">Supprimer</button></div>`).join('')}</div><button class="btn sm" id="zAdd">Ajouter une zone</button></div>
    <div class="card"><h2>Équipe</h2><table><tbody>${S.users.filter(u=>!u.suppr).map(u=>`<tr><td>${esc(u.nom)}<br><span class="muted">${esc(u.tel)} · ${roleLab(u)}${u.actif===false?' · désactivé':''}</span>${u.role==='vendeur'&&srList().length>1?`<br><select data-usr="${u.id}" aria-label="Showroom de ${esc(u.nom)}" style="margin-top:4px;max-width:220px">${srList().find(x=>x.id===u.sr)?'':'<option value="">Showroom à choisir</option>'}${srList().map(x=>`<option value="${x.id}" ${u.sr===x.id?'selected':''}>${esc(x.nom)}</option>`).join('')}</select>`:''}</td><td class="n">${u.id!==ME.id?`<button class="btn sm" data-ut="${u.id}">${u.actif===false?'Réactiver':'Désactiver'}</button> <button class="btn sm bad" data-ux="${u.id}">Supprimer</button>`:''}</td></tr>`).join('')}</tbody></table>
     <label class="f" for="uR">Ajouter une personne</label><select id="uR"><option value="vendeur">Vendeur</option><option value="op">Opérateur atelier</option></select>
@@ -13221,7 +13222,7 @@ function vSet(){if(!isG())return go('list');const st=S.settings;
   $('srAdd').onclick=()=>{st.showrooms=[...JSON.parse(JSON.stringify(srList())),{id:'s'+uid(),nom:'Nouveau showroom',adresse:''}];Store.save();vSet();};
   document.querySelectorAll('[data-usr]').forEach(el=>el.onchange=()=>{const u=S.users.find(x=>x.id===el.dataset.usr);u.sr=el.value;Store.save();vSet();});
   document.querySelectorAll('[data-del]').forEach(el=>el.onchange=()=>{st.del={...delSet(),[el.dataset.del]:Math.min(60,Math.max(1,Math.round(+el.value)||1))};Store.save();vSet();});
-  if($('s_att'))$('s_att').onchange=()=>{st.att=+$('s_att').value;Store.save();};
+  if($('s_att')){const maj=()=>{const m=$('s_att').value;$('attP').hidden=m!=='p';st.att=m==='0'?0:m==='1'?1:Math.max(50,Math.round(+$('s_attS').value||300));Store.save();};$('s_att').onchange=maj;$('s_attS').onchange=maj;}
   document.querySelectorAll('[data-k]').forEach(el=>el.onchange=()=>{const k=el.dataset.k;st[k]=el.type==='number'?(+el.value||0):el.value;Store.save();});
   document.querySelectorAll('[data-z]').forEach(el=>el.onchange=()=>{st.zones[+el.dataset.z][el.dataset.zk]=el.dataset.zk==='prix'?(+el.value||0):el.value;Store.save();});
   document.querySelectorAll('[data-zd]').forEach(b=>b.onclick=()=>sur(b,()=>{const z=st.zones[+b.dataset.zd];if(zonesOk().length<2){flash('Il faut garder au moins une zone de transport.','err');return vSet();}
@@ -13642,7 +13643,9 @@ const CP3STD=[{"n":1,"prog":"CP3","SL":3000,"SW":1220,"used":2450,"np":27,"nh":0
 
 /* ===== Fiches de fabrication : le générateur de salon tourne dans l'app (cadre caché), sans rien connecter ===== */
 const Fab=(()=>{
-  const GENV='19p3',GENF='19p4',CALV=1,CALB=480000,CFG0={pCo:1,sty:0,P:750,em:300,ang:1,c:300,eS:15,SL:2440,SW:1220,fm:2,F:120,hP:40,endG:1,endD:1,accG:1,accD:1,acT:2,acSame:1,acH:382.5,tPl:20,hPl:90};
+  const ATT_S=300,ATT_W=6,   // attaches « petites pièces » : moins de 300 cm² (réglable) ou moins de 6 cm de large
+  attS=()=>{const a=+S.settings.att;return a>=50?a:ATT_S;},
+  GENV='19p3',GENF='19p5',CALV=1,CALB=480000,CFG0={pCo:1,sty:0,P:750,em:300,ang:1,c:300,eS:15,SL:2440,SW:1220,fm:2,F:120,hP:40,endG:1,endD:1,accG:1,accD:1,acT:2,acSame:1,acH:382.5,tPl:20,hPl:90};
   const TABLE={pl:1100,ep:30,rb:325,rs:206.5,rh0:176.5,rh1:120,hb:420,h:620,ds:610,hs:15,lis:60},GUER={pl:500,ep:30,rb:170,rs:110,rh0:90,rh1:60,hb:360,h:540,ds:300,hs:15,lis:50};
   let fr=null,ready=null,busy=false;
   function load(){if(ready)return ready;
@@ -13728,7 +13731,7 @@ const Fab=(()=>{
   function planGet(o){const c=calOf(o),e=pc.get(o.id);return c&&calOk(o)&&e&&e.key===pkey(c)?e:null;}
   async function planLoad(o){if(!calOk(o))return null;const c=calOf(o),k=pkey(c);let e=planGet(o);if(e)return e;const W=await load();W.__planArg={c:cfgOf(o),cal:{s:c.s,sig:c.sig}};
     try{e={key:k,pl:JSON.parse(W.eval('JSON.stringify(PROMO.plan(window.__planArg.c,window.__planArg.cal))'))};}catch(err){e={key:k,pl:[],err:err.message||String(err)};}pc.set(o.id,e);return e;}
-  const fileArg=o=>{const c=calOf(o);return {c:cfgOf(o),cal:{s:c.s,sig:c.sig},code:court(o),nom:o.client.nom+' - '+o.code,att:{on:S.settings.att===0?0:1}};};
+  const fileArg=o=>{const c=calOf(o);return {c:cfgOf(o),cal:{s:c.s,sig:c.sig},code:court(o),nom:o.client.nom+' - '+o.code,att:{on:S.settings.att===0?0:1,small:S.settings.att===1?null:{a:attS()*100,w:ATT_W*10}}};};
   // programmes .cnc + étiquettes d'un salon (ZIP et PDF) ; le générateur refuse de sortir les fichiers si son contrôle trouve une erreur
   async function cncFiles(o){if(!calOk(o))throw new Error('le calepinage de ce salon n’est pas fini');const W=await load();W.__fileArg=fileArg(o);return await W.eval('PROMO.files(window.__fileArg.c,window.__fileArg.cal,window.__fileArg.code,window.__fileArg.nom,window.__fileArg.att)');}
   async function cncLot(O){const ko=O.filter(o=>!calOk(o));if(ko.length)throw new Error('calepinage pas fini pour '+ko.map(court).join(', '));const W=await load();W.__lotArg=O.map(fileArg);return await W.eval('PROMO.filesLot(window.__lotArg)');}

@@ -136,7 +136,9 @@ function cncText(sh,PP,mat,att){PP={...PP,SL:sh.SL,SW:sh.SW};const{inn,ext,hostL
   const Fz='F'+(+PP.cnFz||3000).toFixed(1),Fc='F'+(+PP.cnF||4560).toFixed(1);
   const mv=(g,x,y,full,tail)=>{const sx=f3(x),sy=f3(y);let l=g;if(full||sx!==lx)l+='X'+sx;if(full||sy!==ly)l+='Y'+sy;lx=sx;ly=sy;if(tail)l+=tail;if(l!==g||tail)L.push(l);};
   const order=o2=>{const rest=o2.slice(),out=[];while(rest.length){let bi=0,bd=1e18;rest.forEach((o,i)=>{const s=o.rings[0][0],d=(X(s)-cx)**2+(Y(s)-cy)**2;if(d<bd){bd=d;bi=i;}});const o=rest.splice(bi,1)[0];out.push(o);const e=o.rings[o.rings.length-1][0];cx=X(e);cy=Y(e);}return out;};
-  const aH=t<6?Math.min(1,+att.H||1):(+att.H||2),AT=att.on&&t-aH>0.4?{L:Math.max(5,+att.L||10),z:-(t-aH)}:null;let nTab=0;
+  const aH=t<6?Math.min(1,+att.H||1):(+att.H||2),AT=att.on&&t-aH>0.4?{L:Math.max(5,+att.L||10),z:-(t-aH)}:null;let nTab=0,nTabP=0;
+  // choix du 19/11/2026 : attaches seulement sur les petites pièces (petite surface ou pièce étroite) — les grands panneaux tiennent par leur poids
+  const petit=it=>!att.small||Math.abs(area(it.p.out))<att.small.a||Math.min(it.bb.w,it.bb.h)<att.small.w;
   const ring=(Rr,z,tb)=>{const s=Rr[0];if(first){L.push('G0X'+f3(X(s))+'Y'+f3(Y(s))+'Z'+Zs);lx=f3(X(s));ly=f3(Y(s));first=false;}else{L.push('G0Z'+Zs);mv('G0',X(s),Y(s));}
     for(let zi=0;zi<z.length;zi++){const zz=z[zi];L.push('G1Z'+f3(zz)+Fz);const pts=Rr.length>2?[...Rr.slice(1),Rr[0]]:Rr.length===2?[Rr[1],Rr[0]]:[];let k=0;
       const go=q=>{if(k===0)mv('G1',X(q),Y(q),true,Fc);else mv('',X(q),Y(q));k++;};
@@ -158,10 +160,10 @@ function cncText(sh,PP,mat,att){PP={...PP,SL:sh.SL,SW:sh.SW};const{inn,ext,hostL
   const farStart=Rr=>{if(!prevR||Rr.length<4)return Rr;let bk=0,bd=-1;for(let k=0;k<Rr.length;k++){const d=dRing(Rr[k],prevR);if(d>bd+1e-6){bd=d;bk=k;}}return bk?[...Rr.slice(bk),...Rr.slice(0,bk)]:Rr;};
   const isE=new Set(oE),seq=[];
   for(const o of [...oI,...oE]){const n=Math.max(1,Math.ceil(o.dep/pa-1e-9)),z=[...Array(n)].map((_,i)=>-o.dep*(i+1)/n);
-    o.rings.forEach((Rr,ri)=>{const Q=isE.has(o)?farStart(Rr):Rr;if(isE.has(o))seq.push({o,b:bbox(Q.map(q=>[X(q),Y(q)]))});ring(Q,z,o.it&&ri===0?AT:null);});
+    o.rings.forEach((Rr,ri)=>{const Q=isE.has(o)?farStart(Rr):Rr;if(isE.has(o))seq.push({o,b:bbox(Q.map(q=>[X(q),Y(q)]))});const tb=o.it&&ri===0&&AT&&petit(o.it)?AT:null;if(tb&&z[z.length-1]<tb.z-0.05)nTabP++;ring(Q,z,tb);});
     if(isE.has(o)){const big=o.rings.filter(Rr=>Rr.length>2).sort((a,b)=>b.length-a.length)[0];if(big)prevR=big;}}
   L.push('G0Z'+Zs,'G0X0.000Y0.000');
-  return {text:L.join('\r\n')+'\r\n',out:oE.filter(o=>o.it).map(o=>o.it),seq,par,D,skip,nTab,nIn:inn.length,obad,fix};}
+  return {text:L.join('\r\n')+'\r\n',out:oE.filter(o=>o.it).map(o=>o.it),seq,par,D,skip,nTab,nTabP,nIn:inn.length,obad,fix};}
 
 /* relecture d'un .cnc : contours (suite de G1 entre deux G0), profondeur maxi, limites */
 function readCnc(txt){const C=[];let x=0,y=0,z=0,cur=null,zmin=0,xm=0,ym=0;
@@ -210,7 +212,7 @@ function open(c,cal){const L=parts(c);if(sig(L)!==cal.sig)throw new Error('les c
   const sheets=mkSheets(L,dec(cal.s)),bad=checkPlan(L,sheets);if(bad.length)throw new Error('contrôle du plan refusé : '+bad[0]);return {L,sheets};}
 function plan(c,cal){return planOf(open(c,cal).sheets);}
 /* programmes d'un salon : [{name,text}], ordre de sortie des pièces, erreurs du contrôle */
-function progs(c,cal,code,att){const {L,sheets}=open(c,cal),A={on:!att||att.on!==0,L:(att&&att.L)||10,H:(att&&att.H)||2},out=[],bad=[];
+function progs(c,cal,code,att){const {L,sheets}=open(c,cal),A={on:!att||att.on!==0,L:(att&&att.L)||10,H:(att&&att.H)||2,small:(att&&att.small)||null},out=[],bad=[];
   sheets.forEach((sh,k)=>{const r=cncText(sh,PM('SOM'),'SOM',A),name=code+'-'+(k+1);bad.push(...checkCnc(name,sh,r));out.push({name,text:r.text,sh,r,mat:'SOM'});});
   const s3=cp3Sheet(),r3=cncText(s3,PM('PEAU'),'PEAU',A),n3=code+'-CP3';bad.push(...checkCnc(n3,s3,r3));out.push({name:n3,text:r3.text,sh:s3,r:r3,mat:'PEAU'});
   return {L,sheets,out,bad,att:A};}
@@ -223,16 +225,16 @@ function labels(pg,code,nom){const {jsPDF}=window.jspdf,W=60,H=40,E=[];P.cli=nom
   return {blob:doc.output('blob'),n:N};}
 function note(pg,code,nom,nEtq){const L=['PROGRAMMES CNC — salon '+code+(nom?' ('+nom+')':''),'Format Lang (mm), fraise droite Ø'+P.fr+', origine au centre de la plaque, X = largeur, Y = longueur, Z0 sur le dessus.',
   'Départ de chaque détourage du côté le plus éloigné de la dernière pièce découpée. Pièces logées dans une ouverture : coupées avant cette ouverture.',
-  pg.att.on?'Attaches : '+pg.att.L+' mm sur le contour de chaque pièce (dernier passage), '+pg.att.H+' mm d’épaisseur laissée (1 mm sur le CP 3).':'Sans attaches.',
+  pg.att.on?'Attaches : '+pg.att.L+' mm (dernier passage), '+pg.att.H+' mm d’épaisseur laissée (1 mm sur le CP 3), '+(pg.att.small?'seulement sur les petites pièces (moins de '+Math.round(pg.att.small.a/100)+' cm² ou moins de '+Math.round(pg.att.small.w/10)+' cm de large).':'sur toutes les pièces.'):'Sans attaches.',
   'Étiquettes 60 × 40 : '+nEtq+' pour la carcasse, dans l’ordre de sortie de chaque plaque. Table et guéridons : pas d’étiquette, aucune gravure.',''];
-  for(const f of pg.out){const nc=f.sh.items.filter(i=>!i.p.tab).length;L.push(f.name+'.cnc  ←  '+(f.mat==='SOM'?'CP 15':'CP 3')+', '+f.sh.SW+' × '+f.sh.SL+', profondeur '+f.r.D+' — '+f.sh.items.length+' pièces'+(f.mat==='SOM'?' dont '+nc+' étiquetées':'')+(f.r.nTab?', '+f.r.nTab+' attaches':''));
+  for(const f of pg.out){const nc=f.sh.items.filter(i=>!i.p.tab).length;L.push(f.name+'.cnc  ←  '+(f.mat==='SOM'?'CP 15':'CP 3')+', '+f.sh.SW+' × '+f.sh.SL+', profondeur '+f.r.D+' — '+f.sh.items.length+' pièces'+(f.mat==='SOM'?' dont '+nc+' étiquetées':'')+(f.r.nTab?', '+f.r.nTab+' attaches sur '+f.r.nTabP+' pièces':''));
     const k=Object.entries(f.r.skip);if(k.length)L.push('   à faire à part : '+k.map(([a,b])=>b+' × '+a).join(', '));}
   return L.join('\r\n')+'\r\n';}
 /* dossier CNC complet d'un salon : ZIP (programmes + étiquettes + note) ; refuse de sortir si le contrôle trouve une erreur */
 async function files(c,cal,code,nom,att){const pg=progs(c,cal,code,att);if(pg.bad.length)throw new Error('contrôle des programmes refusé : '+pg.bad[0]+(pg.bad.length>1?' (+'+(pg.bad.length-1)+')':''));
   const lb=labels(pg,code,nom),zip=new JSZip();for(const f of pg.out)zip.file(f.name+'.cnc',f.text);
   zip.file(code+'-etiquettes-60x40.pdf',lb.blob);zip.file(code+'-LISEZMOI.txt',note(pg,code,nom,lb.n));
-  return {zip:await zip.generateAsync({type:'blob',compression:'DEFLATE'}),pdf:lb.blob,nEtq:lb.n,names:pg.out.map(f=>f.name+'.cnc'),nTab:pg.out.reduce((s,f)=>s+f.r.nTab,0)};}
+  return {zip:await zip.generateAsync({type:'blob',compression:'DEFLATE'}),pdf:lb.blob,nEtq:lb.n,names:pg.out.map(f=>f.name+'.cnc'),nTab:pg.out.reduce((s,f)=>s+f.r.nTab,0),nTabP:pg.out.reduce((s,f)=>s+f.r.nTabP,0),nP:pg.out.reduce((s,f)=>s+f.sh.items.length,0)};}
 /* tous les salons d'un lot dans un seul ZIP (un contrôle refusé sur un salon bloque tout le ZIP) */
 async function filesLot(list){const zip=new JSZip(),names=[];let nEtq=0;
   for(const a of list){const pg=progs(a.c,a.cal,a.code,a.att);if(pg.bad.length)throw new Error('contrôle des programmes refusé : '+pg.bad[0]);const lb=labels(pg,a.code,a.nom);nEtq+=lb.n;
