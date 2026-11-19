@@ -116,6 +116,7 @@ function search(parts,opt,onStep){var t0=Date.now(),E=new Engine(opt),g=E.g,item
   for(var k=0;k<parts.length;k++){var S=E.shape(parts[k]);if(!S.oris.length)return {ok:false,big:k,sheets:[],left:[k],tries:0,ms:Date.now()-t0};items.push({k:k,sh:S,W:1});cnt.set(S.id,(cnt.get(S.id)||0)+1);}
   var rnd=rng32(opt.seed||1),orders=opt.orders||['len','bbox'],cfgs=[],best=null,n=0,dl=t0+(opt.budget||60000),maxT=opt.maxTries||1e9;
   orders.forEach(function(o){[0,1].forEach(function(m){[0.3,1.0].forEach(function(t){cfgs.push([o,m,t]);});});});
+  if(opt.rot)cfgs=cfgs.slice(opt.rot%cfgs.length).concat(cfgs.slice(0,opt.rot%cfgs.length));   // 2e calcul en parallèle : autres ordres d'abord
   while(n<maxT&&Date.now()<dl){var c=n<cfgs.length?cfgs[n]:cfgs[Math.floor(rnd()*cfgs.length)],jit=n<cfgs.length?0:[0.05,0.15,0.3][Math.floor(rnd()*3)];
     var key=new Map();items.forEach(function(it){key.set(it,-ORD[c[0]](it.sh)*it.W*(1+(jit?(rnd()*2-1)*jit:0)));});
     var seq=items.slice().sort(function(a,b){return key.get(a)-key.get(b);}),r=runSeq(E,seq,c[1],c[2],opt.nmax,dl,cnt);n++;if(!r)break;

@@ -13374,7 +13374,7 @@ function barresDe(o,L){const P=[];facesOf(o).forEach(l=>{const n=Math.max(1,Math
 function achats(O,lot){const st=S.settings,n=O.length,L=(+(lot&&lot.barre)||+st.barre||250),nb=O.reduce((t,o)=>t+barresDe(o,L*10),0),k=1+(+st.plCh||0)/100,
    mf=O.reduce((t,o)=>t+facesOf(o).reduce((a,x)=>a+x,0)/1000,0),np=O.reduce((t,o)=>t+(Fab.calOk(o)?o.prod.fab.cal.n:7),0),ne=O.filter(o=>!Fab.calOk(o)).length,noy=(PLQ.noy*n+PLQ.bande*mf)*k,che=(PLQ.che*n+PLQ.arc*mf)*k,lg=O.filter(o=>mlOf(o)>10.2).length,
    kg=(v,nom)=>+v>0?`${nom} : <b>${fmt(v*n,Number.isInteger(Math.round(v*n*100)/10)?1:2)} kg</b>`:`${nom} : <span class="warn">à régler</span>`,
-   Q=O.reduce((t,o)=>{const q=QUI[o.forme]||QUI.U;for(const k in q)t[k]=(t[k]||0)+q[k];return t;},{}),pt=Math.max(0,+st.patinsT||0)*n;
+   Q=O.reduce((t,o)=>{const q=(o.prod&&o.prod.fab&&o.prod.fab.q)||QUI[o.forme]||QUI.U;for(const k in q)t[k]=(t[k]||0)+q[k];return t;},{}),pt=Math.max(0,+st.patinsT||0)*n;
   return `<table class="ach"><tbody><tr><td><b>Panneaux</b></td><td>CP 15 (122 × 244) : <b>${np} plaques</b>${ne&&ONLINE?` <span class="muted">(${ne} salon${ne>1?'s':''} à 7 en attendant le calepinage)</span>`:''}<br>CP 3 (122 × 300) : <b>${n} plaque${n>1?'s':''}</b></td></tr>
    <tr><td><b>Bois massif</b></td><td>Barres 8 × 4 de ${fmt(L)} cm : <b>${nb} barres</b><br><span class="muted">${fmt(mf,1)} m de faces</span></td></tr>
    <tr><td><b>Placage</b></td><td>Noyer : <b>${fmt(noy,1)} m²</b><br>Chêne : <b>${fmt(che,1)} m²</b><br><span class="muted">chutes de ${fmt(+st.plCh||0)} % comprises</span></td></tr>
@@ -13639,7 +13639,7 @@ const CP3STD=[{"n":1,"prog":"CP3","SL":3000,"SW":1220,"used":2450,"np":27,"nh":0
 
 /* ===== Fiches de fabrication : le générateur de salon tourne dans l'app (cadre caché), sans rien connecter ===== */
 const Fab=(()=>{
-  const GENV='19p2',GENF='19p3',CALV=1,CALB=180000,CFG0={sty:0,P:750,em:300,ang:1,c:300,eS:15,SL:2440,SW:1220,fm:2,F:120,hP:40,endG:1,endD:1,accG:1,accD:1,acT:2,acSame:1,acH:382.5,tPl:20,hPl:90};
+  const GENV='19p3',GENF='19p4',CALV=1,CALB=480000,CFG0={pCo:1,sty:0,P:750,em:300,ang:1,c:300,eS:15,SL:2440,SW:1220,fm:2,F:120,hP:40,endG:1,endD:1,accG:1,accD:1,acT:2,acSame:1,acH:382.5,tPl:20,hPl:90};
   const TABLE={pl:1100,ep:30,rb:325,rs:206.5,rh0:176.5,rh1:120,hb:420,h:620,ds:610,hs:15,lis:60},GUER={pl:500,ep:30,rb:170,rs:110,rh0:90,rh1:60,hb:360,h:540,ds:300,hs:15,lis:50};
   let fr=null,ready=null,busy=false;
   function load(){if(ready)return ready;
@@ -13650,9 +13650,11 @@ const Fab=(()=>{
       f.onerror=()=>fail('générateur introuvable');f.src='gen/salon.html?v='+GENF;document.body.appendChild(f);});
     return ready;}
   // exécuté dans le cadre du générateur : construit le salon et renvoie ce qui sert aux fiches
-  const INSIDE=`(function(c){PROMO.build(c);var i=R.info,u={},n=0;R.parts.forEach(function(p){if(p.only3d)return;if(p.mat==='SOM')n++;var q=u[p.unit]=u[p.unit]||{};q[p.ref]=(q[p.ref]||0)+1;});
-    return JSON.stringify({mods:(i.mods||[]).map(function(m){return {id:m.id,len:m.len,br:m.br};}),seats:i.seats,acc:i.acc,D:i.D,Lx:i.Lx,Ly:i.Ly,hasL:!!i.hasL,hasR:!!i.hasR,units:u,nCarc:n,fl:(i.faces||[]).map(function(f){return f.len;}),warn:R.warn||[]});})`;
+  const INSIDE=`(function(c){PROMO.build(c);var i=R.info,u={},n=0,T={};try{noticeSteps().forEach(function(st){(st.hw||[]).forEach(function(h){if(h.tool||!(h.n>0))return;T[h.lab]=(T[h.lab]||0)+h.n;});});}catch(e){T=null;}R.parts.forEach(function(p){if(p.only3d)return;if(p.mat==='SOM')n++;var q=u[p.unit]=u[p.unit]||{};q[p.ref]=(q[p.ref]||0)+1;});
+    return JSON.stringify({mods:(i.mods||[]).map(function(m){return {id:m.id,len:m.len,br:m.br};}),seats:i.seats,acc:i.acc,D:i.D,Lx:i.Lx,Ly:i.Ly,hasL:!!i.hasL,hasR:!!i.hasR,units:u,nCarc:n,fl:(i.faces||[]).map(function(f){return f.len;}),hw:T,warn:R.warn||[]});})`;
   const r1=x=>Math.round(x*10)/10;
+  // quincaillerie réelle du salon, lue dans la notice du générateur (vérins : la ligne compte vérin + insert)
+  const hwq=T=>{if(!T)return null;const v=re=>{let n=0;for(const k in T)if(re.test(k))n+=T[k];return n;};return {ver:Math.round(v(/^Vérin/)/2),v30:v(/^Vis 4 × 30/),v40:v(/^Vis 4 × 40/),m6:v(/^Insert M6/),feu:v(/^Patin feutre/)};};
   function build(o,g){const lg=lgOf(o),W=g.Lx,fx=x=>r1(W-x),inc=CFG0.c+CFG0.eS*(2-Math.SQRT2),S=g.seats,by=b=>S.filter(s=>s.br===b);
     const B=by('B'),L=by('L'),Rr=by('R'),xb0=Math.min(...B.map(s=>s.x0)),xb1=Math.max(...B.map(s=>s.x1)),yb0=Math.min(...B.map(s=>s.y0)),yb1=Math.max(...B.map(s=>s.y1));
     const banq=g.mods.map((m,k)=>{const s=S[k],u=g.units[m.id]||{},n=m.id.slice(1);return {id:'C'+n,len:r1(m.len),br:m.br,x0:fx(s.x1),y0:r1(s.y0),x1:fx(s.x0),y1:r1(s.y1),tr:u.TR||0,sv:u.SV||0,ar:u.AR||0,av:u.AV||0,f:'F'+n};});
@@ -13671,7 +13673,7 @@ const Fab=(()=>{
       .sort((a,b)=>ORD.indexOf(a.k)-ORD.indexOf(b.k)).map((f,i)=>{const {k,...r}=f;return {id:'FA-'+(i+1),...r};});
     const acc=['G','D'].filter(k=>g.acc&&g.acc[k]).map(k=>{const a=g.acc[k],b=a.bb;return {id:'AC'+k,nm:k==='G'?'Gauche':'Droit',x0:fx(b[2]),y0:r1(b[1]),x1:fx(b[0]),y1:r1(b[3]),l:Math.round(Math.max(b[2]-b[0],b[3]-b[1])),w:a.W,h:500};});
     return {v:1,gen:GENV,at:new Date().toISOString(),W:Math.round(W),H:Math.round(Math.max(g.Ly,CFG0.P+250)),P:CFG0.P,lgc:{fond:+lg.fond||0,rg:+lg.rg||0,rd:+lg.rd||0},
-      banq,ang:ang.map((a,i)=>({id:'AN'+(i+1),p:a.p.map(q=>[fx(q[0]),r1(q[1])])})),acc,faces,nEtq:g.nCarc,nPcs:g.nCarc+87};}
+      banq,ang:ang.map((a,i)=>({id:'AN'+(i+1),p:a.p.map(q=>[fx(q[0]),r1(q[1])])})),acc,faces,nEtq:g.nCarc,nPcs:g.nCarc+87,...(hwq(g.hw)?{q:hwq(g.hw)}:{})};}
   const cfgOf=o=>{const lg=lgOf(o),F=+lg.fond||0,G=+lg.rg||0,D=+lg.rd||0;return {...CFG0,forme:o.forme==='U'?3:o.forme==='L'?1:0,L2:F*10,L1:o.forme==='Droit'?0:G*10,L3:o.forme==='U'?D*10:0};};
   async function make(o){const lg=lgOf(o),F=+lg.fond||0,G=+lg.rg||0,D=+lg.rd||0;
     if(!(F>0)||(o.forme!=='Droit'&&!(G>0))||(o.forme==='U'&&!(D>0)))throw new Error('cotes incomplètes');

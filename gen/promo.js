@@ -6,7 +6,7 @@
      pièces logées coupées avant l'ouverture qui les contient
    Règles validées par Abdou : marge 15, écart 8, aucune gravure sur table et guéridons, étiquettes pour la carcasse seulement. */
 const PROMO=(()=>{
-const DT=PROMO_DATA,CALV=1,NSEG=6;
+const DT=PROMO_DATA,CALV=2,NSEG=6;
 const circ=(x,y,r,n)=>[...Array(n||24)].map((_,i)=>[x+r*Math.cos(2*Math.PI*i/(n||24)),y+r*Math.sin(2*Math.PI*i/(n||24))]);
 function ringSplit(o,h,n){const b=bbox(o),cx=(b.x0+b.x1)/2,cy=(b.y0+b.y1)/2,ro=Math.max(b.w,b.h)/2,bh=bbox(h),ri=Math.max(bh.w,bh.h)/2,out=[];
   for(let k=0;k<n;k++){const a0=2*Math.PI*k/n,a1=2*Math.PI*(k+1)/n,m=Math.max(8,Math.floor(96/n)),A=[...Array(m+1)].map((_,i)=>a0+(a1-a0)*i/m);
@@ -36,35 +36,41 @@ function checkPlan(L,sheets){const bad=[],seen=new Set();let n=0;
   if(n!==L.length)bad.push('pièces posées '+n+' / '+L.length);return bad;}
 
 /* ---------- calcul en arrière-plan ---------- */
-let WK=null,JOB=0,CB=null;
-function worker(){if(WK)return WK;
+let WKS=[],JOB=0,CB=null;
+function mkWorker(){
   const F=[bbox,area,splitFree,rng32,cpScore,mrBest,mkSheet,mrRun,mrOptimize,chutesOf,nest,segDist,inPoly,polyClear,pairItems,expandKids,toSheet,distRings,gridRects,voidRects,turnP,shapeKey,pairBest,polyClearE,nestCheck,nestParents,rnEdt,rnShape,rnGrid,rnOris,rnFind,rnFree,rescueLast,lastOnChute,tsNest];
   const src=`"use strict";importScripts(${JSON.stringify(new URL('nest7.js?v='+CALV,location.href).href)});let P={},NEST_DL=Infinity;const MATS=${JSON.stringify(MATS)};const PMx=${PMx.toString()};const scLess=${scLess.toString()};const nestLate=${nestLate.toString()};const shiftP=${shiftP.toString()};const stockFor=()=>[];
 ${F.map(f=>f.toString()).join('\n')}
 onmessage=e=>{const d=e.data,parts=d.parts,S=d.P.SL*d.P.SW,ar=p=>Math.abs(area(p.out))-(p.holes||[]).reduce((s,h)=>s+Math.abs(area(h)),0),A=parts.reduce((s,p)=>s+ar(p),0);
-  try{P=d.P;const idx=new Map(parts.map((p,k)=>[p.id,k])),t0=Date.now();
-    const r=nest(parts,{...d.P,cLast:0,useCh:0,nTS:0},400,{}).SOM;
-    if(!r||r.big.length||!r.sheets.length){postMessage({id:d.id,step:'err',msg:'pièce plus grande que la plaque'});return;}
-    const fast=r.sheets.map(sh=>sh.items.map(it=>({k:idx.get(it.p.id),x:it.x,y:it.y,rot:!!it.rot,r2:!!it.r2}))),nF=fast.length;
-    postMessage({id:d.id,step:'fast',sheets:fast,ms:Date.now()-t0,m2:A/1e6});
-    // une plaque de moins : seulement si la surface des pièces le permet (essais : atteint à 76 % de remplissage, jamais à 78 % et plus)
-    const tg=nF-1;if(d.fastOnly||tg<1||A>(d.fill||0.78)*tg*S){postMessage({id:d.id,step:'done',ok:false,why:'surface',tries:0,ms:0});return;}
-    const res=N7.search(parts.map(p=>({out:p.out,holes:p.holes||[]})),{SL:d.P.SL,SW:d.P.SW,mg:d.P.mg,sp:d.P.sp,g:2,nmax:tg,budget:d.budget,seed:d.seed||1,maxTries:d.maxTries,kMode:1,kScan:0.02,giveUp:{after:8,left:6}},(n,s,u)=>postMessage({id:d.id,step:'try',n,left:u}));
+  try{P=d.P;let tg=d.tg||0;
+    if(!tg){const idx=new Map(parts.map((p,k)=>[p.id,k])),t0=Date.now(),r=nest(parts,{...d.P,cLast:0,useCh:0,nTS:0},400,{}).SOM;
+      if(!r||r.big.length||!r.sheets.length){postMessage({id:d.id,step:'err',msg:'pièce plus grande que la plaque'});return;}
+      const fast=r.sheets.map(sh=>sh.items.map(it=>({k:idx.get(it.p.id),x:it.x,y:it.y,rot:!!it.rot,r2:!!it.r2})));tg=fast.length-1;
+      // une plaque de moins : seulement si la surface des pièces le permet (essais : atteinte jusqu'à 76,5 % de remplissage, jamais à 77 % et plus)
+      const go=!d.fastOnly&&tg>=1&&A<=(d.fill||0.767)*tg*S;
+      postMessage({id:d.id,step:'fast',sheets:fast,ms:Date.now()-t0,m2:A/1e6,go});
+      if(!go){postMessage({id:d.id,step:'done',ok:false,why:'surface',tries:0,ms:0});return;}}
+    const res=N7.search(parts.map(p=>({out:p.out,holes:p.holes||[]})),{SL:d.P.SL,SW:d.P.SW,mg:d.P.mg,sp:d.P.sp,g:2,nmax:tg,budget:d.budget,seed:d.seed||1,rot:d.rot||0,maxTries:d.maxTries,kMode:1,kScan:0.02,giveUp:{after:8,left:6}},(n,s,u)=>postMessage({id:d.id,step:'try',n,left:u}));
     postMessage({id:d.id,step:'done',ok:res.ok,sheets:res.ok?res.sheets:null,tries:res.tries,ms:res.ms,left:res.left.length});
   }catch(err){postMessage({id:d.id,step:'err',msg:String(err&&err.message||err)});}};`;
-  WK=new Worker(URL.createObjectURL(new Blob([src],{type:'text/javascript'})));
-  WK.onmessage=e=>{const d=e.data;if(d.id!==JOB||!CB)return;CB(d);};WK.onerror=e=>{if(CB)CB({id:JOB,step:'err',msg:'calcul interrompu ('+(e.message||'erreur')+')'});};
-  return WK;}
-function stop(){if(WK){try{WK.terminate();}catch(e){}WK=null;}CB=null;JOB++;}
-/* calepinage d'un salon : cb({step:'fast',n,s,sig,m2} | {step:'try',n,left} | {step:'done',ok,n,s,tries,ms} | {step:'err',msg}) */
+  const w=new Worker(URL.createObjectURL(new Blob([src],{type:'text/javascript'})));
+  w.onmessage=e=>{const d=e.data;if(d.id!==JOB||!CB)return;CB(d,w);};w.onerror=e=>{if(CB)CB({id:JOB,step:'err',msg:'calcul interrompu ('+(e.message||'erreur')+')'},w);};
+  WKS.push(w);return w;}
+function stop(){WKS.forEach(w=>{try{w.terminate();}catch(e){}});WKS=[];CB=null;JOB++;}
+/* calepinage d'un salon : cb({step:'fast',n,s,sig,m2} | {step:'try',n,left} | {step:'done',ok,n,s,tries,ms} | {step:'err',msg})
+   la recherche de la plaque de moins tourne sur 2 calculs en parallèle quand l'appareil le permet (ordres de pose différents) : le premier qui réussit gagne */
 function calc(c,o,cb){stop();const L=parts(c),sg=sig(L),id=++JOB,Pp=JSON.parse(JSON.stringify(P)),plain=L.map(p=>({id:p.id,mat:'SOM',out:p.out,holes:p.holes||[]}));
-  const good=(sheets)=>{P=Pp;const bad=checkPlan(L,mkSheets(L,sheets));return bad;};
-  CB=d=>{try{
-      if(d.step==='fast'){const bad=good(d.sheets);if(bad.length){stop();cb({step:'err',msg:'plan rapide refusé au contrôle ('+bad[0]+')'});return;}cb({step:'fast',n:d.sheets.length,s:enc(d.sheets),sig:sg,m2:d.m2,ms:d.ms});}
-      else if(d.step==='try')cb(d);
-      else if(d.step==='done'){let ok=d.ok;if(ok){const bad=good(d.sheets);if(bad.length)ok=false;}CB=null;cb({step:'done',ok,n:ok?d.sheets.length:0,s:ok?enc(d.sheets):'',sig:sg,tries:d.tries,ms:d.ms,why:d.why||''});}
-      else{CB=null;cb(d);}}catch(err){CB=null;cb({step:'err',msg:String(err&&err.message||err)});}};
-  try{worker().postMessage({id,parts:plain,P:Pp,budget:(o&&o.budget)||180000,seed:(o&&o.seed)||1,maxTries:o&&o.maxTries,fastOnly:!!(o&&o.fastOnly),fill:o&&o.fill});}catch(err){CB=null;cb({step:'err',msg:String(err&&err.message||err)});}
+  const good=(sheets)=>{P=Pp;return checkPlan(L,mkSheets(L,sheets));},nW=(o&&o.workers)||Math.max(1,Math.min(2,(navigator.hardwareConcurrency||2)-1)),t0=Date.now();
+  const base={id,parts:plain,P:Pp,budget:(o&&o.budget)||480000,maxTries:(o&&o.maxTries)||(nW>1?16:30),fill:o&&o.fill},tr=new Map();let pend=1,nTry=0,end=false;
+  const fin=d=>{if(end)return;end=true;stop();cb(d);};
+  CB=(d,w)=>{try{
+      if(d.step==='fast'){const bad=good(d.sheets);if(bad.length){fin({step:'err',msg:'plan rapide refusé au contrôle ('+bad[0]+')'});return;}cb({step:'fast',n:d.sheets.length,s:enc(d.sheets),sig:sg,m2:d.m2,ms:d.ms});
+        if(d.go)for(let k=1;k<nW;k++){pend++;mkWorker().postMessage({...base,tg:d.sheets.length-1,rot:4*k,seed:1+k});}}
+      else if(d.step==='try'){tr.set(w,d.n);nTry=[...tr.values()].reduce((a,b)=>a+b,0);cb({step:'try',n:nTry,left:d.left});}
+      else if(d.step==='done'){if(d.ok&&!good(d.sheets).length){fin({step:'done',ok:true,n:d.sheets.length,s:enc(d.sheets),sig:sg,tries:nTry,ms:Date.now()-t0,why:''});return;}
+        if(d.why==='surface'||--pend<=0)fin({step:'done',ok:false,n:0,s:'',sig:sg,tries:nTry,ms:Date.now()-t0,why:d.why||''});}
+      else{if(--pend<=0||!tr.size&&WKS.length<2)fin(d);}}catch(err){fin({step:'err',msg:String(err&&err.message||err)});}};
+  try{mkWorker().postMessage({...base,seed:(o&&o.seed)||1,fastOnly:!!(o&&o.fastOnly)});}catch(err){fin({step:'err',msg:String(err&&err.message||err)});}
   return sg;}
 
 /* ---------- programmes .cnc : mêmes réglages que le générateur v19, plus les attaches ---------- */
