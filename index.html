@@ -12934,7 +12934,7 @@ const telWa=t=>{let s=telN(t);if(s.startsWith('00'))s=s.slice(2);if(s.startsWith
 
 /* ---------- données ---------- */
 const DEFSET={base:14900,mlBase:10,pMl:600,pVit:800,acPct:75,resH:48,quota:108,rythme:7,liv0:'2026-12-21',arr:1,tolMl:0,
-  barre:250,plCh:10,colleKg:4,blancheKg:1,sintoKg:0.25,patinsT:12,relJ:5,del:{cnc:2,carc:4,tab:4,face:5,plac:6,vern:9,emb:10},showrooms:[{id:'s1',nom:'Agadir',adresse:'272 Av. Mohammed V, Dcheira El Jihadia'},{id:'s2',nom:'Casablanca',adresse:'Bd Haïfa'}],sv:6,
+  barre:250,plCh:10,colleKg:4,blancheKg:1,sintoKg:0.25,patinsT:12,att:1,relJ:5,del:{cnc:2,carc:4,tab:4,face:5,plac:6,vern:9,emb:10},showrooms:[{id:'s1',nom:'Agadir',adresse:'272 Av. Mohammed V, Dcheira El Jihadia'},{id:'s2',nom:'Casablanca',adresse:'Bd Haïfa'}],sv:6,
   zones:[{id:'z1',nom:'Agadir, Inezgane, Aït Melloul',prix:0},{id:'z2',nom:'Région d’Agadir',prix:0},{id:'z3',nom:'Autre ville',prix:0}],
   marque:'ALMAZARDECOR',adresse:'Showroom Agadir — 272 Av. Mohammed V, Dcheira El Jihadia',tel:'06 47 36 72 72',url:''};
 const LSK='almazar_promo_bois_app_v1';
@@ -13200,6 +13200,8 @@ function vSet(){if(!isG())return go('list');const st=S.settings;
    <div class="card"><h2>Délais</h2><p class="muted" style="font-size:.85rem;margin:0 0 6px">Jours travaillés : du lundi au samedi (le samedi, la journée finit à 15 h). Chaque étape doit être finie tant de jours travaillés après le lancement du lot. Les lots déjà lancés gardent leurs dates.</p>
     <div class="g2">${STEPS.map(x=>`<div><label class="f" for="d_${x.k}">${x.lab} (jours)</label><input type="number" class="num" id="d_${x.k}" data-del="${x.k}" min="1" max="60" step="1" value="${delSet()[x.k]}"></div>`).join('')}${num('relJ','Relevé des cotes après l’acompte (jours)','jours')}</div></div>
    <div class="card"><h2>Achats par salon</h2><div class="g2">${num('barre','Barres de face reçues (cm)','cm')}${num('plCh','Chutes de placage (%)','%')}${num('colleKg','Colle de placage par salon (kg)','kg')}${num('blancheKg','Colle blanche à bois par salon (kg)','kg')}${num('sintoKg','Sintofer de rebouchage par salon (kg)','kg')}${num('patinsT','Patins de table et guéridons par salon','patins')}</div></div>
+   <div class="card"><h2>Programmes CNC</h2><label class="f" for="s_att">Attaches sur les pièces (pour qu’elles ne sautent pas)</label><select id="s_att"><option value="1" ${st.att===0?'':'selected'}>Oui — 10 mm, 2 mm d’épaisseur laissée (1 mm sur le CP 3)</option><option value="0" ${st.att===0?'selected':''}>Non — sans attaches</option></select>
+    <p class="muted" style="font-size:.85rem;margin:8px 0 0">Marge 15 mm, 8 mm entre les pièces. Chaque programme est recontrôlé avant d’être donné à l’opérateur.</p></div>
    <div class="card"><h2>Transport par zone</h2><div id="zs">${st.zones.map((z,i)=>z.off?'':`<div class="row" style="margin-bottom:6px"><input type="text" data-z="${i}" data-zk="nom" value="${esc(z.nom)}" aria-label="Nom de la zone ${i+1}" style="flex:2 1 160px"><input type="number" class="num" data-z="${i}" data-zk="prix" value="${z.prix}" aria-label="Prix du transport zone ${i+1} (DH)" style="flex:1 1 80px"><button class="btn sm bad" data-zd="${i}">Supprimer</button></div>`).join('')}</div><button class="btn sm" id="zAdd">Ajouter une zone</button></div>
    <div class="card"><h2>Équipe</h2><table><tbody>${S.users.filter(u=>!u.suppr).map(u=>`<tr><td>${esc(u.nom)}<br><span class="muted">${esc(u.tel)} · ${roleLab(u)}${u.actif===false?' · désactivé':''}</span>${u.role==='vendeur'&&srList().length>1?`<br><select data-usr="${u.id}" aria-label="Showroom de ${esc(u.nom)}" style="margin-top:4px;max-width:220px">${srList().find(x=>x.id===u.sr)?'':'<option value="">Showroom à choisir</option>'}${srList().map(x=>`<option value="${x.id}" ${u.sr===x.id?'selected':''}>${esc(x.nom)}</option>`).join('')}</select>`:''}</td><td class="n">${u.id!==ME.id?`<button class="btn sm" data-ut="${u.id}">${u.actif===false?'Réactiver':'Désactiver'}</button> <button class="btn sm bad" data-ux="${u.id}">Supprimer</button>`:''}</td></tr>`).join('')}</tbody></table>
     <label class="f" for="uR">Ajouter une personne</label><select id="uR"><option value="vendeur">Vendeur</option><option value="op">Opérateur atelier</option></select>
@@ -13216,6 +13218,7 @@ function vSet(){if(!isG())return go('list');const st=S.settings;
   $('srAdd').onclick=()=>{st.showrooms=[...JSON.parse(JSON.stringify(srList())),{id:'s'+uid(),nom:'Nouveau showroom',adresse:''}];Store.save();vSet();};
   document.querySelectorAll('[data-usr]').forEach(el=>el.onchange=()=>{const u=S.users.find(x=>x.id===el.dataset.usr);u.sr=el.value;Store.save();vSet();});
   document.querySelectorAll('[data-del]').forEach(el=>el.onchange=()=>{st.del={...delSet(),[el.dataset.del]:Math.min(60,Math.max(1,Math.round(+el.value)||1))};Store.save();vSet();});
+  if($('s_att'))$('s_att').onchange=()=>{st.att=+$('s_att').value;Store.save();};
   document.querySelectorAll('[data-k]').forEach(el=>el.onchange=()=>{const k=el.dataset.k;st[k]=el.type==='number'?(+el.value||0):el.value;Store.save();});
   document.querySelectorAll('[data-z]').forEach(el=>el.onchange=()=>{st.zones[+el.dataset.z][el.dataset.zk]=el.dataset.zk==='prix'?(+el.value||0):el.value;Store.save();});
   document.querySelectorAll('[data-zd]').forEach(b=>b.onclick=()=>sur(b,()=>{const z=st.zones[+b.dataset.zd];if(zonesOk().length<2){flash('Il faut garder au moins une zone de transport.','err');return vSet();}
@@ -13369,15 +13372,15 @@ function facesOf(o){const l=lgOf(o),F=(+l.fond||0)*10,G=(+l.rg||0)*10,D=(+l.rd||
 function barresDe(o,L){const P=[];facesOf(o).forEach(l=>{const n=Math.max(1,Math.ceil((l+10)/L));for(let i=0;i<n;i++)P.push(Math.round(l/n));});P.sort((a,b)=>b-a);const B=[];
   for(const q of P){let b=B.find(x=>x.reduce((t,y)=>t+y+10,0)+q<=L);if(!b){b=[];B.push(b);}b.push(q);}return B.length;}
 function achats(O,lot){const st=S.settings,n=O.length,L=(+(lot&&lot.barre)||+st.barre||250),nb=O.reduce((t,o)=>t+barresDe(o,L*10),0),k=1+(+st.plCh||0)/100,
-   mf=O.reduce((t,o)=>t+facesOf(o).reduce((a,x)=>a+x,0)/1000,0),noy=(PLQ.noy*n+PLQ.bande*mf)*k,che=(PLQ.che*n+PLQ.arc*mf)*k,lg=O.filter(o=>mlOf(o)>10.2).length,
+   mf=O.reduce((t,o)=>t+facesOf(o).reduce((a,x)=>a+x,0)/1000,0),np=O.reduce((t,o)=>t+(Fab.calOk(o)?o.prod.fab.cal.n:7),0),ne=O.filter(o=>!Fab.calOk(o)).length,noy=(PLQ.noy*n+PLQ.bande*mf)*k,che=(PLQ.che*n+PLQ.arc*mf)*k,lg=O.filter(o=>mlOf(o)>10.2).length,
    kg=(v,nom)=>+v>0?`${nom} : <b>${fmt(v*n,Number.isInteger(Math.round(v*n*100)/10)?1:2)} kg</b>`:`${nom} : <span class="warn">à régler</span>`,
    Q=O.reduce((t,o)=>{const q=QUI[o.forme]||QUI.U;for(const k in q)t[k]=(t[k]||0)+q[k];return t;},{}),pt=Math.max(0,+st.patinsT||0)*n;
-  return `<table class="ach"><tbody><tr><td><b>Panneaux</b></td><td>CP 15 (122 × 244) : <b>${7*n} plaques</b><br>CP 3 (122 × 300) : <b>${n} plaque${n>1?'s':''}</b></td></tr>
+  return `<table class="ach"><tbody><tr><td><b>Panneaux</b></td><td>CP 15 (122 × 244) : <b>${np} plaques</b>${ne&&ONLINE?` <span class="muted">(${ne} salon${ne>1?'s':''} à 7 en attendant le calepinage)</span>`:''}<br>CP 3 (122 × 300) : <b>${n} plaque${n>1?'s':''}</b></td></tr>
    <tr><td><b>Bois massif</b></td><td>Barres 8 × 4 de ${fmt(L)} cm : <b>${nb} barres</b><br><span class="muted">${fmt(mf,1)} m de faces</span></td></tr>
    <tr><td><b>Placage</b></td><td>Noyer : <b>${fmt(noy,1)} m²</b><br>Chêne : <b>${fmt(che,1)} m²</b><br><span class="muted">chutes de ${fmt(+st.plCh||0)} % comprises</span></td></tr>
    <tr><td><b>Colles et Sintofer</b></td><td>${kg(st.colleKg,'Colle de placage')}<br>${kg(st.blancheKg,'Colle blanche à bois')}<br>${kg(st.sintoKg,'Sintofer de rebouchage')}</td></tr>
    <tr><td><b>Quincaillerie</b></td><td>Vérins M8 : <b>${Q.ver}</b><br>Inserts M8 : <b>${Q.ver+QTAB.insM8*n}</b> <span class="muted">(vérins + plateaux)</span><br>Vis M8 des plateaux : <b>${QTAB.visM8*n}</b><br>Inserts M6 + vis M6 × 30 : <b>${Q.m6}</b><br>Vis à bois 4 × 30 : <b>${Q.v30}</b><br>Vis à bois 4 × 40 : <b>${Q.v40}</b><br>Patins feutre des caisses : <b>${Q.feu}</b><br>Patins de table et guéridons : <b>${pt}</b></td></tr></tbody></table>
-   <p class="muted" style="font-size:.85rem;margin:6px 0 0">Une ligne par déplacement. Plaques : base du prototype de 10,2 ml.${lg?' '+lg+' salon(s) plus long(s) : nombre de plaques à confirmer par le générateur.':''} Placage : surfaces du modèle (accoudoirs sur les 2 joues, dessus et chants des plateaux, dessous non compté). Quincaillerie : quantités du modèle selon la forme du salon (U, L ou droit). Emballage pas encore compté.</p>`;}
+   <p class="muted" style="font-size:.85rem;margin:6px 0 0">Une ligne par déplacement. Plaques CP 15 : ${ONLINE?'nombre du calepinage de chaque salon (7 tant qu’il n’est pas calculé)':'base du prototype de 10,2 ml'}.${lg&&ne?' '+lg+' salon(s) de plus de 10,2 ml : attendre le calepinage pour commander.':''} Placage : surfaces du modèle (accoudoirs sur les 2 joues, dessus et chants des plateaux, dessous non compté). Quincaillerie : quantités du modèle selon la forme du salon (U, L ou droit). Emballage pas encore compté.</p>`;}
 
 /* ---------- production (gérant) ---------- */
 function vProd(){if(!isG())return go(home());const C=aLancer(),n=Math.min(C.length,Math.max(1,S.settings.rythme)),num=S.lots.reduce((m,l)=>Math.max(m,l.num),0)+1,dl0=delaisLot(new Date(),delSet()),dflt=dl0.emb,bar0=(S.lots.length&&+S.lots[S.lots.length-1].barre)||+S.settings.barre||250;
@@ -13391,12 +13394,17 @@ function vProd(){if(!isG())return go(home());const C=aLancer(),n=Math.min(C.leng
      return `<div class="card"><h2>Lot ${l.num} — lancé le ${fdate(l.at)} · fin prévue le ${fdate(finLot(l))}</h2>${O.map(o=>`<button class="it" data-sal="${o.id}"><span class="l1"><span><span class="n cd">${court(o)}</span> ${esc(o.client.nom)}</span><span>${tagsP(o)}</span></span>
        <span class="l2"><span>${esc(o.forme)} · ${fmt(mlOf(o),1)} ml · ${nbDone(o)}/${STEPS.length}</span>${dots(o)}</span></button>`).join('')}
       <p class="muted" style="font-size:.9rem;margin:6px 0">Fiches de fabrication : ${O.length-fabManque(l).length} / ${O.length} salon${O.length>1?'s':''} prêt${O.length-fabManque(l).length>1?'s':''}.</p>
-      <div class="row"><button class="btn sm" data-fl="${l.id}">Fiches du lot (PDF)</button>${fabManque(l).length?`<button class="btn sm pri" data-fab="${l.id}">Préparer les fiches de fabrication</button>`:''}</div><p class="muted" data-flm="${l.id}" style="font-size:.85rem;margin:6px 0 0" aria-live="polite"></p>
+      ${ONLINE?`<p class="muted" data-call="${l.id}" style="font-size:.9rem;margin:6px 0">${calLot(O)}</p>`:''}
+      <div class="row"><button class="btn sm" data-fl="${l.id}">Fiches du lot (PDF)</button>${fabManque(l).length?`<button class="btn sm pri" data-fab="${l.id}">Préparer les fiches de fabrication</button>`:''}${ONLINE&&O.length&&O.every(o=>Fab.calOk(o))?`<button class="btn sm" data-cz="${l.id}">Programmes CNC du lot (ZIP)</button>`:''}${ONLINE&&!Fab.calBusy()&&O.some(o=>Fab.calNeed(o)&&Fab.calInfo(o).st==='err')?`<button class="btn sm" data-cgo="${l.id}">Relancer le calepinage</button>`:''}</div><p class="muted" data-flm="${l.id}" style="font-size:.85rem;margin:6px 0 0" aria-live="polite"></p>
       <details><summary>Délais du lot</summary><table><tbody>${STEPS.map(s=>{const lim=finJour(s.k==='emb'?l.fin:dlLot(l)[s.k]),nt=O.filter(o=>tard(o,s.k)).length,nd=O.filter(o=>done(o,s.k)).length;return `<tr><td>${s.lab}</td><td>${jour(lim)}${lim.getDay()===6?' 15 h':''}</td><td class="n">${nd}/${O.length}</td><td>${nt?`<b class="neg">${nt} en retard</b>`:nd===O.length?'<span class="pos">fini</span>':''}</td></tr>`;}).join('')}</tbody></table></details>
       <details><summary>Liste d’achat du lot</summary>${achats(O,l)}</details></div>`;}).join('')}`);
   if($('bLot'))$('bLot').onclick=e=>{const b=e.currentTarget;if(!b.dataset.armed){b.dataset.armed='1';b.textContent='Confirmer le lancement du lot '+num;return;}
     const L=C.slice(0,n),l={id:uid(),num,at:new Date().toISOString(),par:ME.id,fin:$('lFin').value||dflt,dl:{...dl0,emb:$('lFin').value||dflt},barre:Math.min(600,Math.max(100,+$('lBar').value||bar0)),orderIds:L.map(o=>o.id)};S.lots.push(l);L.forEach(o=>{o.lotId=l.id;prodOf(o);});Store.save();
     flash('Lot '+num+' lancé : '+n+' salon'+(n>1?'s':'')+'. Imprime les fiches du lot.');vProd();if(ONLINE)fabLot(l);};
+  document.querySelectorAll('[data-cz]').forEach(b=>b.onclick=async()=>{const l=S.lots.find(x=>x.id===b.dataset.cz),O=l.orderIds.map(id=>S.orders.find(o=>o.id===id)).filter(o=>o&&!o.annule),m=document.querySelector(`[data-flm="${l.id}"]`);
+    b.disabled=true;m.textContent='Préparation et contrôle des programmes du lot…';try{const F=await Fab.cncLot(O);m.textContent=await saveFile('Programmes-lot-'+l.num+'.zip',F.zip,'application/zip')+' — '+F.names.length+' programmes, '+F.nEtq+' étiquettes.';}catch(e){m.innerHTML='<b class="neg">'+esc(fabErr(e.message||String(e)))+'</b>';}b.disabled=false;});
+  document.querySelectorAll('[data-cgo]').forEach(b=>b.onclick=()=>{Fab.calErrClear();Fab.calRun(S.lots.find(x=>x.id===b.dataset.cgo).orderIds);vProd();});
+  calInit();calAuto();
   document.querySelectorAll('[data-fab]').forEach(b=>b.onclick=()=>{b.disabled=true;fabLot(S.lots.find(x=>x.id===b.dataset.fab)).then(r=>{if(!r)vProd();});});
   document.querySelectorAll('[data-fl]').forEach(b=>b.onclick=async()=>{const l=S.lots.find(x=>x.id===b.dataset.fl),O=l.orderIds.map(id=>S.orders.find(o=>o.id===id)).filter(o=>o&&!o.annule);
     const {blob,name}=fichePdf(O,'Fiches-lot-'+l.num+'.pdf');document.querySelector(`[data-flm="${l.id}"]`).textContent=await saveFile(name,blob,'application/pdf');});}
@@ -13444,6 +13452,12 @@ function vSal(){const a=ARG||{},o=S.orders.find(x=>x.id===a.id);if(!o||!o.lotId|
   document.querySelectorAll('[data-ft]').forEach(b=>b.onclick=()=>{FTAB=b.dataset.ft;const y=window.scrollY;vSal();window.scrollTo(0,y);});
   document.querySelectorAll('#fiche .plz').forEach(el=>el.onclick=()=>el.classList.toggle('zoom'));
   const fl=$('fpL');if(fl){if(!g)fl.disabled=true;else fl.onchange=()=>{l.barre=Math.min(600,Math.max(100,Math.round(+fl.value)||250));Store.save();const y=window.scrollY;vSal();window.scrollTo(0,y);};}
+  if(ONLINE&&FTAB==='cnc'&&$('fiche')&&Fab.calOk(o)&&!Fab.planGet(o))Fab.planLoad(o).then(()=>{if(VIEW==='sal'&&ARG&&ARG.id===o.id&&FTAB==='cnc'){const y=window.scrollY;vSal();window.scrollTo(0,y);}}).catch(()=>{const m=$('calMsg');if(m)m.textContent='Le générateur ne s’est pas chargé : vérifie la connexion et rouvre la fiche.';});
+  const dlCnc=(id,pdf)=>{const b=$(id);if(!b)return;b.onclick=async()=>{const m=$('cncM');b.disabled=true;m.textContent='Préparation et contrôle des programmes…';
+      try{const F=await Fab.cncFiles(o);m.textContent=(pdf?await saveFile('Etiquettes-'+court(o)+'.pdf',F.pdf,'application/pdf'):await saveFile('Programmes-'+court(o)+'.zip',F.zip,'application/zip'))+' — '+(pdf?F.nEtq+' étiquettes pour la carcasse.':F.names.length+' programmes : '+F.names[0].replace('.cnc','')+' à '+F.names[F.names.length-1].replace('.cnc','')+'.');}
+      catch(e){m.innerHTML='<b class="neg">'+esc(fabErr(e.message||String(e)))+'</b>';}b.disabled=false;};};dlCnc('bCnc',false);dlCnc('bEtq',true);
+  if($('bCalUse'))$('bCalUse').onclick=()=>{if(Fab.calUse(o))flash('Salon '+court(o)+' : plan de '+o.prod.fab.cal.n+' plaques retenu, programmes disponibles.');const y=window.scrollY;vSal();window.scrollTo(0,y);};
+  if($('bCalGo'))$('bCalGo').onclick=()=>{Fab.calErrClear();Fab.calRun([o.id]);const y=window.scrollY;vSal();window.scrollTo(0,y);};
   if($('bFab'))$('bFab').onclick=async e=>{e.currentTarget.disabled=true;$('fabM').textContent='Calcul des fiches en cours…';const r=await Fab.prepare([o.id]);
     if(r.ko.length)flash('Fiches non calculées : '+fabErr(r.ko[0][1])+'.','err');else flash('Fiches du salon '+court(o)+' prêtes.');if(VIEW==='sal'&&ARG&&ARG.id===o.id){const y=window.scrollY;vSal();window.scrollTo(0,y);}};}
 /* ---------- fiches de fabrication par poste ---------- */
@@ -13454,13 +13468,27 @@ function ficheCard(o,g,mine){const f=o.prod&&o.prod.fab;
   if(!f)return `<div class="card" id="cFab"><h2>Fiches de fabrication</h2>${g?`<p class="muted" style="margin:0 0 8px">Les fiches de ce salon ne sont pas encore calculées.${cotesMin(o.forme,lgOf(o))?' <b class="neg">'+cotesMin(o.forme,lgOf(o))+'</b>':''}</p><div class="row"><button class="btn pri" id="bFab">Préparer les fiches de ce salon</button><button class="btn" data-go="ord" data-arg="${o.id}">Corriger les cotes</button></div><p id="fabM" class="muted" style="font-size:.85rem;margin:8px 0 0" aria-live="polite"></p>`:'<p class="muted" style="margin:0">Les fiches de ce salon sont en préparation par le gérant.</p>'}</div>`;
   const keys=g?FP.POSTES.map(x=>x[0]):[...new Set(mine.flatMap(k=>FKEYS[k]||[]))];if(!keys.length)return '';
   if(!keys.includes(FTAB)){const k0=mine.find(k=>dispo(o,k)&&FKEYS[k]);FTAB=(!g&&k0?FKEYS[k0][0]:keys[0]);}
-  FP.setL(0);const D=Fab.dossier(o),lab=Object.fromEntries(FP.POSTES.map(x=>[x[0],x[1]]));
+  FP.setL(0);const D=Fab.dossier(o),lab=Object.fromEntries(FP.POSTES.map(x=>[x[0],x[1]])),ci=D.cal,pe=Fab.planGet(o);calInit();CALSIG=calSig(o);
+  D.cal={err:ci.st==='err'||!!(pe&&pe.err),msg:!ONLINE?'Le plan des plaques CP 15 et les programmes .cnc se préparent dans la version en ligne de l’app.':pe&&pe.err?'Plan des plaques refusé : '+pe.err+'.'+(g?' Recalcule les fiches du salon.':' Préviens le gérant.'):ci.st==='ok'?'Chargement du plan des plaques…'
+    :g?fabErr(ci.txt):(ci.st==='err'||ci.st==='none'?'Le calepinage de ce salon n’est pas encore calculé : préviens le gérant.':'Le calepinage de ce salon est en cours chez le gérant. Le plan des plaques et les programmes .cnc arrivent dès qu’il est fini.')};
   return `<div class="card" id="cFab"><h2>Fiches de fabrication</h2>${Fab.perime(o)?`<div class="msg err">Les cotes ont changé depuis le calcul de ces fiches.${g?' Recalcule-les.':' Préviens le gérant.'}</div>`:''}
     ${keys.length>1?`<div class="tabs" role="tablist" aria-label="Fiche">${keys.map(k=>`<button role="tab" data-ft="${k}" aria-selected="${k===FTAB}">${lab[k]}</button>`).join('')}</div>`:''}<div id="fiche" role="tabpanel">${FP.render(FTAB,D)}</div>
-    ${g?`<div class="row" style="margin-top:10px"><button class="btn sm" id="bFab">Recalculer les fiches</button></div><p id="fabM" class="muted" style="font-size:.85rem;margin:8px 0 0" aria-live="polite"></p>`:''}</div>`;}
+    ${g&&ONLINE?`<p class="muted" id="calL" style="font-size:.9rem;margin:10px 0 0">${esc(fabErr(ci.txt))}</p>`:''}
+    ${g?`<div class="row" style="margin-top:10px">${ONLINE&&ci.use?`<button class="btn sm pri" id="bCalUse">Utiliser le plan de ${ci.n} plaques maintenant</button>`:''}${ONLINE&&['none','err','calc'].includes(ci.st)?`<button class="btn sm" id="bCalGo">${ci.st==='calc'?'Reprendre la recherche':'Lancer le calepinage'}</button>`:''}<button class="btn sm" id="bFab">Recalculer les fiches</button></div><p id="fabM" class="muted" style="font-size:.85rem;margin:8px 0 0" aria-live="polite"></p>`:''}</div>`;}
 async function fabLot(l){const M=fabManque(l);if(!M.length)return null;const m=()=>document.querySelector(`[data-flm="${l.id}"]`);
   const r=await Fab.prepare(M.map(o=>o.id),o=>{if(m())m().textContent='Calcul des fiches : salon '+court(o)+'…';});
-  if(VIEW==='prod'){if(r.ko.length)flash('Lot '+l.num+' : fiches non calculées pour '+r.ko.map(x=>x[0]||'le lot').join(', ')+' — '+fabErr(r.ko[0][1])+'.','err');else flash('Lot '+l.num+' : fiches de fabrication prêtes pour '+r.ok+' salon'+(r.ok>1?'s':'')+'.');vProd();}return r;}
+  if(VIEW==='prod'){if(r.ko.length)flash('Lot '+l.num+' : fiches non calculées pour '+r.ko.map(x=>x[0]||'le lot').join(', ')+' — '+fabErr(r.ko[0][1])+'.','err');else flash('Lot '+l.num+' : fiches de fabrication prêtes pour '+r.ok+' salon'+(r.ok>1?'s':'')+'. Le calepinage des plaques tourne maintenant sur cet appareil : garde l’app ouverte.');vProd();}
+  if(ONLINE)Fab.calRun(l.orderIds);return r;}
+/* ----- calepinage des plaques CP 15 (gérant, version en ligne) ----- */
+function calLot(O){const ok=O.filter(o=>Fab.calOk(o)),run=O.find(o=>Fab.calInfo(o).st==='run'),er=O.filter(o=>Fab.calInfo(o).st==='err'),tot=ok.reduce((t,o)=>t+o.prod.fab.cal.n,0);
+  return 'Calepinage CP 15 : '+ok.length+' / '+O.length+' salon'+(O.length>1?'s':'')+' prêt'+(ok.length>1?'s':'')+(ok.length?' ('+tot+' plaques)':'')+(run?' · en cours : salon <b>'+court(run)+'</b> — '+esc(Fab.calInfo(run).txt.replace(/^Calepinage : /,'')):'')+(er.length?' · <b class="neg">non calculé : '+er.map(court).join(', ')+' ('+esc(fabErr(Fab.calInfo(er[0]).txt.replace(/^Calepinage non calculé : /,'')))+')</b>':'');}
+// reprise automatique : les salons lancés pas encore découpés dont le calepinage n'est pas fini sont calculés dès que le gérant ouvre la production
+function calAuto(){if(!ONLINE||!isG()||Fab.calBusy())return;const ids=S.lots.flatMap(l=>l.orderIds).filter(id=>{const o=S.orders.find(x=>x.id===id);return Fab.calNeed(o)&&!done(o,'cnc')&&Fab.calInfo(o).st!=='err';});if(ids.length)setTimeout(()=>Fab.calRun(ids),0);}
+let CALSIG='';const calSig=o=>{const c=Fab.calInfo(o);return c.st+'|'+(c.n||0)+'|'+(c.use?1:0);};
+let CALI=false;function calInit(){if(CALI)return;CALI=true;Fab.onCal(()=>{if(VIEW==='prod'){document.querySelectorAll('[data-call]').forEach(el=>{const l=S.lots.find(x=>x.id===el.dataset.call);if(l)el.innerHTML=calLot(l.orderIds.map(id=>S.orders.find(o=>o.id===id)).filter(o=>o&&!o.annule));});
+    if(!Fab.calBusy()&&!document.querySelector('[data-armed]')&&!/^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement||{}).tagName||'')){const y=window.scrollY;vProd();window.scrollTo(0,y);}return;}
+  if(VIEW==='sal'&&ARG){const o=S.orders.find(x=>x.id===ARG.id);if(!o)return;const el=$('calL');if(el)el.textContent=Fab.calInfo(o).txt;
+    if(calSig(o)!==CALSIG&&!document.querySelector('[data-armed]')&&!/^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement||{}).tagName||'')){const y=window.scrollY;vSal();window.scrollTo(0,y);}}});}
 
 /* ---------- mon travail (opérateur) ---------- */
 function vOp(){if(!isOp())return go(home());const mine=ME.postes||[],P=enProd().filter(o=>!pret(o)),todo=[];
@@ -13526,12 +13554,12 @@ function cnc(D){const col={c:'#b9cfe0',t:'#e9c99b',g:'#c6dcbc'},ring=r=>'M'+r.ma
   const pl=(p,lab)=>`<div class="pl plz"><div class="plh"><span class="prog">${e(D.code)}-${e(p.prog)}</span><span class="muted">${lab} · ${p.np} pièces</span></div>
     <div class="sv"><svg viewBox="-10 -10 ${p.SL+20} ${p.SW+20}" role="img" aria-label="Plaque ${e(p.prog)} : ${p.np} pièces"><rect x="0" y="0" width="${p.SL}" height="${p.SW}" fill="#fff" stroke="${INK}" stroke-width="10"/>
     ${p.it.map(q=>`<path d="${ring(q.o)}${(q.h||[]).map(ring).join('')}" fill="${col[q.u]}" fill-rule="evenodd" stroke="${INK}" stroke-width="3"/>${(q.p||[]).map(c=>`<circle cx="${c[0]}" cy="${c[1]}" r="${c[2]}" fill="${INK}"/>`).join('')}`).join('')}</svg></div></div>`;
-  if(!D.plaques.length)return head(D,qui(D,'cnc','Abdellatif'),'CNC panneaux')+chips([`<b>${D.nPcs}</b> pièces`,`<b>${D.nEtq}</b> étiquettes (carcasse)`,`<b>${cp3.length}</b> plaque CP 3`])+
-   `<div class="msg">Le plan des plaques CP 15 et les programmes .cnc de ce salon arrivent à la prochaine mise à jour de l’app.</div>`+cp3.map(p=>pl(p,`CP 3 · ${cm(p.SW,0)} × ${cm(p.SL,0)}`)+`<p class="fnote">Peaux de la table et des guéridons (les mêmes pour tous les salons) : hauteur dans la longueur de la plaque, 25 mm mini entre pièces.</p>`).join('');
+  if(!D.plaques.length){const c=D.cal||{};return head(D,qui(D,'cnc','Abdellatif'),'CNC panneaux')+chips([`<b>${D.nPcs}</b> pièces`,`<b>${D.nEtq}</b> étiquettes (carcasse)`,`<b>${cp3.length}</b> plaque CP 3`])+
+   `<div class="msg${c.err?' err':''}" id="calMsg">${e(c.msg||'Le plan des plaques CP 15 et les programmes .cnc se préparent dans la version en ligne de l’app.')}</div>`+cp3.map(p=>pl(p,`CP 3 · ${cm(p.SW,0)} × ${cm(p.SL,0)}`)+`<p class="fnote">Peaux de la table et des guéridons (les mêmes pour tous les salons) : hauteur dans la longueur de la plaque, 25 mm mini entre pièces.</p>`).join('');}
   return head(D,qui(D,'cnc','Abdellatif'),'CNC panneaux')+chips([`<b>${D.plaques.length}</b> plaques CP 15`,`<b>${cp3.length}</b> plaque${cp3.length>1?'s':''} CP 3`,`<b>${nP}</b> pièces`,`<b>${D.nEtq}</b> étiquettes`])+
    `<div class="leg"><i style="background:${col.c}"></i>Carcasse (étiquetée)<i style="background:${col.t}"></i>Table<i style="background:${col.g}"></i>Guéridons</div><p class="fnote" style="margin:0">Touche une plaque pour l’agrandir.</p>`+
    D.plaques.map(p=>pl(p,'CP 15')).join('')+cp3.map(p=>pl(p,`CP 3 · ${cm(p.SW,0)} × ${cm(p.SL,0)}`)+`<p class="fnote">Peaux : hauteur dans la longueur de la plaque, 25 mm mini entre pièces. Reste ${cm(p.SL-p.used-15,0)} cm de plaque.</p>`).join('')+
-   `<div class="row2"><button class="btn pri" disabled>Programmes .cnc</button><button class="btn" disabled>Étiquettes 60 × 40</button></div>`;}
+   `<div class="row2"><button class="btn pri" id="bCnc">Programmes .cnc</button><button class="btn" id="bEtq">Étiquettes 60 × 40</button></div><p id="cncM" class="muted" style="font-size:.85rem;margin:8px 0 0" aria-live="polite"></p>`;}
 
 /* 2 — CNC faces (par lot) */
 function cncf(D){const L=barL(D),n=barPlan(D,L).length;
@@ -13607,7 +13635,7 @@ const CP3STD=[{"n":1,"prog":"CP3","SL":3000,"SW":1220,"used":2450,"np":27,"nh":0
 
 /* ===== Fiches de fabrication : le générateur de salon tourne dans l'app (cadre caché), sans rien connecter ===== */
 const Fab=(()=>{
-  const GENV='19p1',CFG0={sty:0,P:750,em:300,ang:1,c:300,eS:15,SL:2440,SW:1220,fm:2,F:120,hP:40,endG:1,endD:1,accG:1,accD:1,acT:2,acSame:1,acH:382.5,tPl:20,hPl:90};
+  const GENV='19p1',GENF='19p2',CALV=1,CALB=180000,CFG0={sty:0,P:750,em:300,ang:1,c:300,eS:15,SL:2440,SW:1220,fm:2,F:120,hP:40,endG:1,endD:1,accG:1,accD:1,acT:2,acSame:1,acH:382.5,tPl:20,hPl:90};
   const TABLE={pl:1100,ep:30,rb:325,rs:206.5,rh0:176.5,rh1:120,hb:420,h:620,ds:610,hs:15,lis:60},GUER={pl:500,ep:30,rb:170,rs:110,rh0:90,rh1:60,hb:360,h:540,ds:300,hs:15,lis:50};
   let fr=null,ready=null,busy=false;
   function load(){if(ready)return ready;
@@ -13615,7 +13643,7 @@ const Fab=(()=>{
       let done=false;const fail=m=>{if(done)return;done=true;clearTimeout(to);ready=null;f.remove();fr=null;rej(new Error(m));},to=setTimeout(()=>fail('délai dépassé'),45000);
       f.onload=()=>{const t0=Date.now();(function wait(){if(done)return;let ok=false;try{ok=f.contentWindow.eval('typeof buildS==="function"&&typeof DEF==="object"');}catch(e){return fail('générateur introuvable');}
           if(ok){done=true;clearTimeout(to);res(f.contentWindow);}else if(Date.now()-t0>25000)fail('générateur introuvable');else setTimeout(wait,120);})();};
-      f.onerror=()=>fail('générateur introuvable');f.src='gen/salon.html?v='+GENV;document.body.appendChild(f);});
+      f.onerror=()=>fail('générateur introuvable');f.src='gen/salon.html?v='+GENF;document.body.appendChild(f);});
     return ready;}
   // exécuté dans le cadre du générateur : construit le salon et renvoie ce qui sert aux fiches
   const INSIDE=`(function(c){P={...DEF,...c};R=buildS(P);var i=R.info,u={},n=0;R.parts.forEach(function(p){if(p.only3d)return;if(p.mat==='SOM')n++;var q=u[p.unit]=u[p.unit]||{};q[p.ref]=(q[p.ref]||0)+1;});
@@ -13640,25 +13668,62 @@ const Fab=(()=>{
     const acc=['G','D'].filter(k=>g.acc&&g.acc[k]).map(k=>{const a=g.acc[k],b=a.bb;return {id:'AC'+k,nm:k==='G'?'Gauche':'Droit',x0:fx(b[2]),y0:r1(b[1]),x1:fx(b[0]),y1:r1(b[3]),l:Math.round(Math.max(b[2]-b[0],b[3]-b[1])),w:a.W,h:500};});
     return {v:1,gen:GENV,at:new Date().toISOString(),W:Math.round(W),H:Math.round(Math.max(g.Ly,CFG0.P+250)),P:CFG0.P,lgc:{fond:+lg.fond||0,rg:+lg.rg||0,rd:+lg.rd||0},
       banq,ang:ang.map((a,i)=>({id:'AN'+(i+1),p:a.p.map(q=>[fx(q[0]),r1(q[1])])})),acc,faces,nEtq:g.nCarc,nPcs:g.nCarc+87};}
+  const cfgOf=o=>{const lg=lgOf(o),F=+lg.fond||0,G=+lg.rg||0,D=+lg.rd||0;return {...CFG0,forme:o.forme==='U'?3:o.forme==='L'?1:0,L2:F*10,L1:o.forme==='Droit'?0:G*10,L3:o.forme==='U'?D*10:0};};
   async function make(o){const lg=lgOf(o),F=+lg.fond||0,G=+lg.rg||0,D=+lg.rd||0;
     if(!(F>0)||(o.forme!=='Droit'&&!(G>0))||(o.forme==='U'&&!(D>0)))throw new Error('cotes incomplètes');
-    const W=await load(),c={...CFG0,forme:o.forme==='U'?3:o.forme==='L'?1:0,L2:F*10,L1:o.forme==='Droit'?0:G*10,L3:o.forme==='U'?D*10:0};
+    const W=await load(),c=cfgOf(o);
     let g;W.__fabArg=c;try{g=JSON.parse(W.eval(INSIDE+'(window.__fabArg)'));}catch(e){throw new Error('cotes refusées par le générateur ('+(e.message||e)+')');}
     if(!g.mods.length||!g.seats.length||g.mods.length!==g.seats.length)throw new Error('cotes refusées par le générateur');
     const mn=Math.min(...g.fl);if(!(mn>=200))throw new Error('cotes trop petites pour un salon en '+o.forme+' (une face ferait '+Math.round(mn/10)+' cm)');
     return build(o,g);}
   // dossier complet pour l'affichage d'une fiche
   function dossier(o){const f=o.prod&&o.prod.fab;if(!f)return null;const l=lotOf(o),lg=lgOf(o),q={};POSTES.forEach(p=>{q[p.k]=opsDe(p.k).join(' · ');});
-    return {...f,code:court(o),nom:o.client.nom+' · '+o.code,forme:o.forme,lg:{fond:+lg.fond||0,rg:+lg.rg||0,rd:+lg.rd||0},SL:2440,SW:1220,barres:{L:((l&&l.barre)||S.settings.barre||250)*10},plaques:f.plaques||[],cp3:CP3STD,table:TABLE,guer:GUER,qui:q};}
+    return {...f,code:court(o),nom:o.client.nom+' · '+o.code,forme:o.forme,lg:{fond:+lg.fond||0,rg:+lg.rg||0,rd:+lg.rd||0},SL:2440,SW:1220,barres:{L:((l&&l.barre)||S.settings.barre||250)*10},plaques:(planGet(o)||{}).pl||[],cal:calInfo(o),cp3:CP3STD,table:TABLE,guer:GUER,qui:q};}
   // les cotes ont-elles changé depuis le calcul ?
   const perime=o=>{const f=o.prod&&o.prod.fab,lg=lgOf(o);return !!f&&(f.gen!==GENV||!f.lgc||f.lgc.fond!==(+lg.fond||0)||f.lgc.rg!==(+lg.rg||0)||f.lgc.rd!==(+lg.rd||0));};
   // prépare les fiches d'une liste de salons, l'un après l'autre
   async function prepare(ids,onStep){if(busy)return {ok:0,ko:[['','calcul déjà en cours']]};busy=true;let ok=0;const ko=[];
     try{for(const id of ids){const o=S.orders.find(x=>x.id===id);if(!o)continue;if(onStep)onStep(o);
-        try{const f=await make(o);prodOf(o).fab=f;ok++;Store.save();}catch(e){ko.push([court(o),e.message||String(e)]);if(/introuvable|délai/.test(e.message||''))break;}}}
+        try{const old=o.prod&&o.prod.fab,f=await make(o);if(old&&old.cal&&old.lgc&&['fond','rg','rd'].every(k=>old.lgc[k]===f.lgc[k]))f.cal=old.cal;prodOf(o).fab=f;ok++;Store.save();}catch(e){ko.push([court(o),e.message||String(e)]);if(/introuvable|délai/.test(e.message||''))break;}}}
     finally{busy=false;}
     return {ok,ko};}
-  return {make,build,dossier,prepare,perime,load,busy:()=>busy,GENV,CFG0};
+  /* ----- calepinage CP 15 : plan rapide tout de suite, puis recherche d'une plaque de moins en arrière-plan (un salon à la fois) ----- */
+  const calOf=o=>(o&&o.prod&&o.prod.fab&&o.prod.fab.cal)||null;
+  const calOk=o=>{const c=calOf(o);return !!c&&c.v===CALV&&c.st==='ok'&&!!c.s&&!perime(o);};
+  const calNeed=o=>!!(o&&!o.annule&&o.lotId&&o.prod&&o.prod.fab&&!perime(o)&&!calOk(o));
+  let cq=[],cc=null,cerr={};const cl=[];
+  const calEmit=()=>cl.forEach(f=>{try{f();}catch(e){}});
+  function calRun(ids){for(const id of ids){const o=S.orders.find(x=>x.id===id);if(calNeed(o)&&!cq.includes(id)&&!(cc&&cc.id===id)){delete cerr[id];cq.push(id);}}calNext();}
+  async function calNext(){if(cc||!cq.length)return;const id=cq.shift(),o=S.orders.find(x=>x.id===id);if(!calNeed(o))return calNext();
+    cc={id,step:'fast',n:0,left:0,nf:0};calEmit();let W;try{W=await load();}catch(e){cerr[id]=e.message||String(e);cq.forEach(x=>{cerr[x]=cerr[id];});cq=[];cc=null;calEmit();return;}
+    if(!cc||cc.id!==id)return;const fin=()=>{if(cc&&cc.id===id)cc=null;calEmit();calNext();},now=()=>new Date().toISOString();
+    W.__calArg={c:cfgOf(o),o:{budget:CALB}};
+    W.__calCb=d=>{const f=o.prod&&o.prod.fab;if(!cc||cc.id!==id||!f)return;
+      if(d.step==='fast'){f.cal={v:CALV,st:'calc',m:'r',n:d.n,s:d.s,sig:d.sig,at:now()};Store.save();cc.step='opt';cc.nf=d.n;calEmit();}
+      else if(d.step==='try'){cc.n=d.n;cc.left=d.left;calEmit();}
+      else if(d.step==='done'){if(d.ok&&f.cal&&d.n<f.cal.n)f.cal={v:CALV,st:'ok',m:'o',n:d.n,nf:f.cal.n,s:d.s,sig:d.sig,at:now()};else if(f.cal)f.cal={...f.cal,st:'ok'};Store.save();fin();}
+      else{if(f.cal&&f.cal.st==='calc'&&f.cal.s){f.cal={...f.cal,st:'ok'};Store.save();}else cerr[id]=d.msg||'erreur';fin();}};
+    try{W.eval('PROMO.calc(window.__calArg.c,window.__calArg.o,window.__calCb)');}catch(e){cerr[id]=e.message||String(e);fin();}}
+  // « Utiliser le plan rapide maintenant » : arrête la recherche de ce salon et libère ses programmes
+  function calUse(o){const c=calOf(o);if(!c||c.st!=='calc'||!c.s)return false;if(cc&&cc.id===o.id){try{fr.contentWindow.eval('PROMO.stop()');}catch(e){}cc=null;}cq=cq.filter(x=>x!==o.id);o.prod.fab.cal={...c,st:'ok'};Store.save();calEmit();calNext();return true;}
+  // état du calepinage d'un salon, en clair
+  function calInfo(o){const c=calOf(o),run=!!cc&&cc.id===o.id,wait=cq.includes(o.id),pl=n=>n+' plaque'+(n>1?'s':'');
+    if(calOk(o))return {st:'ok',n:c.n,txt:'Calepinage : '+pl(c.n)+' CP 15'+(c.m==='o'?' (une de moins que le plan rapide)':'')};
+    if(run)return {st:'run',n:c?c.n:0,use:!!(c&&c.st==='calc'&&c.s),txt:cc.step==='fast'?'Calepinage : plan rapide en cours…':'Calepinage : plan de '+pl(cc.nf)+' prêt, recherche d’une plaque de moins'+(cc.n?' (essai '+cc.n+')':'')+'…'};
+    if(wait)return {st:'wait',txt:'Calepinage : en attente, un salon à la fois.'};
+    if(cerr[o.id])return {st:'err',txt:'Calepinage non calculé : '+cerr[o.id]};
+    if(c&&c.st==='calc'&&c.s)return {st:'calc',n:c.n,use:true,txt:'Calepinage : plan de '+pl(c.n)+' prêt, la recherche d’une plaque de moins n’est pas finie.'};
+    return {st:'none',txt:'Calepinage pas encore calculé.'};}
+  // plan des plaques (pour la fiche CNC) : recalculé par le générateur à partir du calepinage enregistré, gardé en mémoire
+  const pc=new Map(),pkey=c=>c.at+'|'+c.n+'|'+c.sig;
+  function planGet(o){const c=calOf(o),e=pc.get(o.id);return c&&calOk(o)&&e&&e.key===pkey(c)?e:null;}
+  async function planLoad(o){if(!calOk(o))return null;const c=calOf(o),k=pkey(c);let e=planGet(o);if(e)return e;const W=await load();W.__planArg={c:cfgOf(o),cal:{s:c.s,sig:c.sig}};
+    try{e={key:k,pl:JSON.parse(W.eval('JSON.stringify(PROMO.plan(window.__planArg.c,window.__planArg.cal))'))};}catch(err){e={key:k,pl:[],err:err.message||String(err)};}pc.set(o.id,e);return e;}
+  const fileArg=o=>{const c=calOf(o);return {c:cfgOf(o),cal:{s:c.s,sig:c.sig},code:court(o),nom:o.client.nom+' - '+o.code,att:{on:S.settings.att===0?0:1}};};
+  // programmes .cnc + étiquettes d'un salon (ZIP et PDF) ; le générateur refuse de sortir les fichiers si son contrôle trouve une erreur
+  async function cncFiles(o){if(!calOk(o))throw new Error('le calepinage de ce salon n’est pas fini');const W=await load();W.__fileArg=fileArg(o);return await W.eval('PROMO.files(window.__fileArg.c,window.__fileArg.cal,window.__fileArg.code,window.__fileArg.nom,window.__fileArg.att)');}
+  async function cncLot(O){const ko=O.filter(o=>!calOk(o));if(ko.length)throw new Error('calepinage pas fini pour '+ko.map(court).join(', '));const W=await load();W.__lotArg=O.map(fileArg);return await W.eval('PROMO.filesLot(window.__lotArg)');}
+  return {make,build,dossier,prepare,perime,load,busy:()=>busy,GENV,CFG0,calRun,calUse,calOk,calNeed,calInfo,calBusy:()=>!!cc||cq.length>0,calErrClear:()=>{cerr={};},onCal:f=>cl.push(f),planGet,planLoad,cncFiles,cncLot};
 })();
 
 
