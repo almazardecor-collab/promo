@@ -12949,6 +12949,11 @@ const sessSet=id=>{try{if(id)localStorage.setItem(SESS,id);else localStorage.rem
 
 /* ---------- règles de calcul ---------- */
 const lgOf=o=>o.releve||o.lg;
+// cotes mini acceptées par le générateur (cm) : U fond 230 et retours 125, L 125 et 125, droit 80
+const cotesMin=(forme,l)=>{const F=+l.fond||0,G=+l.rg||0,D=+l.rd||0;
+  if(forme==='U'&&(F<230||G<125||D<125))return 'Cotes trop petites pour un salon en U : le fond doit faire au moins 230 cm et chaque retour au moins 125 cm.';
+  if(forme==='L'&&(F<125||G<125))return 'Cotes trop petites pour un salon en L : le fond et le retour doivent faire au moins 125 cm chacun.';
+  if(forme==='Droit'&&F<80)return 'Cotes trop petites : un salon droit fait au moins 80 cm.';return '';};
 const mlOf=o=>{const l=lgOf(o);return ((+l.fond||0)+(+l.rg||0)+(+l.rd||0))/100;};
 const extraOf=(o,st=S.settings)=>{const x=mlOf(o)-st.mlBase-(+st.tolMl||0),a=Math.max(0.1,+st.arr||1);return x>1e-9?Math.round(Math.ceil(x/a-1e-9)*a*100)/100:0;};
 const zoneOf=(o,st=S.settings)=>st.zones.find(z=>z.id===o.zoneId)||null;
@@ -13080,6 +13085,7 @@ function vNew(){if(isOp())return go('op');const st=S.settings;if(!DRAFT)DRAFT=ne
   $('bSave').onclick=async()=>{rd();const GP=$('oP')?$('oP').value.trim():'';const e=$('nE'),err=t=>{e.textContent=t;e.hidden=false;e.scrollIntoView({block:'center'});};
     if(!d.client.nom.trim())return err(I?'Le nom du showroom est obligatoire.':'Le nom du client est obligatoire.');if(!I&&telN(d.client.tel).length<9)return err('Le téléphone WhatsApp du client est obligatoire.');
     if(!(+d.lg.fond>0))return err('Indique au moins la longueur du fond.');
+    if(cotesMin(d.forme,d.lg))return err(cotesMin(d.forme,d.lg));
     if(I){const c=nextCode(true),now=new Date().toISOString(),o={id:uid(),...c,createdAt:now,vendeurId:ME.id,interne:true,canal:'Showroom',client:{nom:d.client.nom.trim(),tel:'',ville:d.client.ville,quartier:''},forme:d.forme,lg:{...d.lg},vitres:false,zoneId:'',remise:0,remiseMotif:'',notes:d.notes,pays:[],releve:{...d.lg,notes:d.notes,date:now,par:ME.id}};
       if(!(await addOrder(o,GP,err)))return;DRAFT=null;flash('Commande showroom '+o.code+' enregistrée. Valide-la pour la production.');return go('ord',o.id);}
     if(d.remise>0&&!ONLINE&&!S.users.some(u=>u.role==='gerant'&&u.pin===GP))return err('Remise refusée : il faut le code du gérant.');
@@ -13094,7 +13100,7 @@ async function addOrder(o,gpin,err){if(!ONLINE){S.orders.push(o);Store.save();re
 /* ---------- fiche commande ---------- */
 function vOrd(){if(isOp())return go('op');const o=S.orders.find(x=>x.id===ARG);if(!o)return go('list');const st=S.settings,s=statut(o),L=lignes(o),t=totalOf(o),p=payeOf(o),ad=acDu(o);
   const hExp=o.confirmedAt||o.interne?'':`<div class="msg ${s==='exp'?'err':''}">${s==='exp'?'Réservation expirée : plus de '+st.resH+' h sans acompte.':'Réservée jusqu’au '+fdt(new Date(new Date(o.createdAt).getTime()+st.resH*3600e3))+'.'} Il manque ${dh(Math.max(0,ad-p))} pour confirmer.</div>`;
-  const canPay=s!=='ann'&&!o.interne,canRel=(!!o.confirmedAt||!!o.interne)&&s!=='ann'&&s!=='val';
+  const canPay=s!=='ann'&&!o.interne,cncFait=!!(o.prod&&o.prod.steps&&o.prod.steps.cnc),canRel=(!!o.confirmedAt||!!o.interne)&&s!=='ann'&&(s!=='val'||(isG()&&!cncFait));
   shell(`${esc(o.client.nom)}`,`${o.code} · ${tagH(s)}`,`${hExp}
    <div class="card"><h2>Commande</h2><p style="margin:0 0 6px">${esc(o.client.tel)} · ${esc([o.client.ville,o.client.quartier].filter(Boolean).join(', '))}<br><span class="muted">${esc(o.canal)} · ${esc(userOf(o.vendeurId).nom)} · ${fdt(o.createdAt)}</span></p>
     <p style="margin:0 0 6px">Forme ${esc(o.forme)} · ${o.releve?'cotes relevées':'longueurs annoncées'} : fond ${fmt(lgOf(o).fond||0)}${lgOf(o).rg?' · gauche '+fmt(lgOf(o).rg):''}${lgOf(o).rd?' · droit '+fmt(lgOf(o).rd):''} cm = <b>${fmt(mlOf(o),2)} ml</b></p>
@@ -13109,7 +13115,7 @@ function vOrd(){if(isOp())return go('op');const o=S.orders.find(x=>x.id===ARG);i
    <div class="card"><h2>Relevé des cotes chez le client</h2>${o.releve?`<p style="margin:0 0 6px">Relevé le ${fdate(o.releve.date)} par ${esc(userOf(o.releve.par).nom)} : fond ${fmt(o.releve.fond||0)}${o.releve.rg?' · gauche '+fmt(o.releve.rg):''}${o.releve.rd?' · droit '+fmt(o.releve.rd):''} cm${o.releve.notes?'<br><span class="muted">'+esc(o.releve.notes)+'</span>':''}</p>`:''}
     ${canRel?`<div class="g3"><div><label class="f" for="rF">Fond (cm)</label><input type="number" class="num" id="rF" inputmode="numeric" value="${esc(lgOf(o).fond)}"></div><div><label class="f" for="rG">Retour gauche</label><input type="number" class="num" id="rG" inputmode="numeric" value="${esc(lgOf(o).rg)}" ${o.forme==='Droit'?'disabled':''}></div><div><label class="f" for="rD">Retour droit</label><input type="number" class="num" id="rD" inputmode="numeric" value="${esc(lgOf(o).rd)}" ${o.forme!=='U'?'disabled':''}></div></div>
     <label class="f" for="rN">Remarques (plinthe, prise, porte, angle…)</label><textarea id="rN" rows="2">${esc(o.releve?.notes||'')}</textarea>
-    <button class="btn full" id="bRel" style="margin-top:10px">${o.releve?'Corriger le relevé':'Enregistrer le relevé'}</button>`:`<p class="muted">${o.confirmedAt?(s==='val'?'Commande validée : le relevé ne peut plus changer.':''):'Le relevé se fait après l’acompte.'}</p>`}</div>
+    ${s==='val'?'<p class="muted" style="font-size:.85rem;margin:8px 0 0">Commande déjà validée : en corrigeant les cotes, les fiches de fabrication sont recalculées.</p>':''}<button class="btn full" id="bRel" style="margin-top:10px">${o.releve?(o.interne?'Corriger les cotes':'Corriger le relevé'):'Enregistrer le relevé'}</button>`:`<p class="muted">${o.confirmedAt||o.interne?(s==='val'?(cncFait?'La découpe CNC est validée : les cotes ne peuvent plus changer.':'Commande validée : seul le gérant peut encore corriger les cotes.'):''):'Le relevé se fait après l’acompte.'}</p>`}</div>
    <div class="card" id="cDoc"><h2>Documents pour le client</h2><div class="row"><button class="btn pri" id="bPdf">Bon de commande (PDF)</button><button class="btn" id="bWa">Message WhatsApp</button><button class="btn" id="bLien">Copier le lien de suivi</button></div><p id="dM" class="muted" style="font-size:.85rem;margin:8px 0 0" aria-live="polite"></p></div>
    ${prodOrdCard(o)}<div class="card"><h2>Actions</h2><div class="row">
     ${isG()&&s==='cot'?'<button class="btn pri" id="bVal">Valider pour la production</button>':''}
@@ -13125,7 +13131,8 @@ function vOrd(){if(isOp())return go('op');const o=S.orders.find(x=>x.id===ARG);i
     if(!Store.save()&&photo){o.pays[o.pays.length-1].photo='';Store.save();flash('Paiement enregistré, mais la photo n’a pas pu être gardée (mémoire pleine).','err');}
     else flash((!was&&o.confirmedAt?'Acompte reçu : commande confirmée, rang '+rangOf(o)+'.':'Paiement enregistré.')+(phKo?' La photo n’a pas pu être envoyée (pas de connexion).':''),phKo?'err':'ok');vOrd();};
   if($('bRel'))$('bRel').onclick=()=>{const r={fond:$('rF').value,rg:o.forme==='Droit'?'':$('rG').value,rd:o.forme==='U'?$('rD').value:'',notes:$('rN').value,date:new Date().toISOString(),par:ME.id};
-    if(!(+r.fond>0)){flash('Indique au moins la cote du fond.','err');return vOrd();}const t0=totalOf(o);o.releve=r;Store.save();const t1=totalOf(o);
+    if(!(+r.fond>0)){flash('Indique au moins la cote du fond.','err');return vOrd();}if(cotesMin(o.forme,r)){flash(cotesMin(o.forme,r),'err');return vOrd();}const t0=totalOf(o);o.releve=r;Store.save();const t1=totalOf(o);
+    if(o.lotId&&ONLINE)Fab.prepare([o.id]).then(x=>{if(VIEW!=='ord'||ARG!==o.id)return;if(x.ko.length)flash('Cotes enregistrées, mais fiches non recalculées : '+fabErr(x.ko[0][1])+'.','err');else flash('Cotes corrigées : les fiches de fabrication du salon '+court(o)+' sont recalculées.');vOrd();});
     flash('Relevé enregistré.'+(t1!==t0?' Le total passe de '+dh(t0)+' à '+dh(t1)+'.':' Le prix ne change pas.'));vOrd();};
   if($('bVal'))$('bVal').onclick=()=>{o.valideAt=new Date().toISOString();o.validePar=ME.id;Store.save();flash('Commande validée pour la production. Lance-la dans un lot depuis l’onglet Production.');vOrd();};
   if($('bAnn'))$('bAnn').onclick=e=>{const b=e.currentTarget;if(!b.dataset.armed){b.dataset.armed='1';b.textContent='Confirmer l’annulation';return;}
@@ -13371,7 +13378,7 @@ let FTAB=null;const FKEYS={cnc:['cnc','cncf'],carc:['carc'],tab:['tab'],face:['f
 const fabErr=m=>/introuvable|délai/.test(m)?(ONLINE?'le générateur ne s’est pas chargé (vérifie la connexion et réessaie)':'les fiches se calculent dans la version en ligne de l’app'):m;
 const fabManque=l=>l.orderIds.map(id=>S.orders.find(o=>o.id===id)).filter(o=>o&&!o.annule&&(!(o.prod&&o.prod.fab)||Fab.perime(o)));
 function ficheCard(o,g,mine){const f=o.prod&&o.prod.fab;
-  if(!f)return `<div class="card" id="cFab"><h2>Fiches de fabrication</h2>${g?`<p class="muted" style="margin:0 0 8px">Les fiches de ce salon ne sont pas encore calculées.</p><button class="btn pri" id="bFab">Préparer les fiches de ce salon</button><p id="fabM" class="muted" style="font-size:.85rem;margin:8px 0 0" aria-live="polite"></p>`:'<p class="muted" style="margin:0">Les fiches de ce salon sont en préparation par le gérant.</p>'}</div>`;
+  if(!f)return `<div class="card" id="cFab"><h2>Fiches de fabrication</h2>${g?`<p class="muted" style="margin:0 0 8px">Les fiches de ce salon ne sont pas encore calculées.${cotesMin(o.forme,lgOf(o))?' <b class="neg">'+cotesMin(o.forme,lgOf(o))+'</b>':''}</p><div class="row"><button class="btn pri" id="bFab">Préparer les fiches de ce salon</button><button class="btn" data-go="ord" data-arg="${o.id}">Corriger les cotes</button></div><p id="fabM" class="muted" style="font-size:.85rem;margin:8px 0 0" aria-live="polite"></p>`:'<p class="muted" style="margin:0">Les fiches de ce salon sont en préparation par le gérant.</p>'}</div>`;
   const keys=g?FP.POSTES.map(x=>x[0]):[...new Set(mine.flatMap(k=>FKEYS[k]||[]))];if(!keys.length)return '';
   if(!keys.includes(FTAB)){const k0=mine.find(k=>dispo(o,k)&&FKEYS[k]);FTAB=(!g&&k0?FKEYS[k0][0]:keys[0]);}
   FP.setL(0);const D=Fab.dossier(o),lab=Object.fromEntries(FP.POSTES.map(x=>[x[0],x[1]]));
