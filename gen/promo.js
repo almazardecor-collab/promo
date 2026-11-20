@@ -12,8 +12,11 @@ function ringSplit(o,h,n){const b=bbox(o),cx=(b.x0+b.x1)/2,cy=(b.y0+b.y1)/2,ro=M
   for(let k=0;k<n;k++){const a0=2*Math.PI*k/n,a1=2*Math.PI*(k+1)/n,m=Math.max(8,Math.floor(96/n)),A=[...Array(m+1)].map((_,i)=>a0+(a1-a0)*i/m);
     out.push([...A.map(a=>[cx+ro*Math.cos(a),cy+ro*Math.sin(a)]),...A.slice().reverse().map(a=>[cx+ri*Math.cos(a),cy+ri*Math.sin(a)])]);}
   return out;}
+/* table Ø 120 (au choix du client) : même fût ; plateau PL-C1 et couronne PL-C2 agrandis de 50 mm au rayon, perçages à la même place par rapport au centre */
+const T120=q=>{if(q.rep!=='PL-C1'&&q.rep!=='PL-C2')return q;const R=600,sc=(C,k)=>C.map(v=>[+((v[0]-550)*k+R).toFixed(2),+((v[1]-550)*k+R).toFixed(2)]);
+  return q.rep==='PL-C1'?{...q,c:[sc(q.c[0],R/550)],pr:(q.pr||[]).map(v=>[v[0]+50,v[1]+50,...v.slice(2)])}:{...q,c:[sc(q.c[0],R/550),sc(q.c[1],(R-50)/500)]};};
 function tabParts(){const L=[];
-  for(const [u,src,nm] of [['T',DT.T,'Table'],['G1',DT.G,'Guéridon 1'],['G2',DT.G,'Guéridon 2']])for(const q of src){const base={ref:'TAB',cat:'acc',mat:'SOM',t:15,unit:u,tab:1};
+  for(const [u,src,nm] of [['T',P&&P.tb===120?DT.T.map(T120):DT.T,'Table'],['G1',DT.G,'Guéridon 1'],['G2',DT.G,'Guéridon 2']])for(const q of src){const base={ref:'TAB',cat:'acc',mat:'SOM',t:15,unit:u,tab:1};
     if(u==='T'&&q.rep==='PL-C2'){ringSplit(q.c[0],q.c[1],NSEG).forEach((o,k)=>L.push({...base,id:`T-PL-C2-${k+1}`,name:`${nm} — PL-C2 (segment ${k+1}/${NSEG})`,out:orient(o,true),holes:[]}));continue;}
     const pkL=(q.pr||[]).map(v=>({lay:v[3]?`PERCAGE_D${v[2]}_P${v[3]}`:`PERCAGE_TRAVERSANT_D${v[2]}`,pts:circ(v[0],v[1],v[2]/2)}));
     L.push({...base,id:`${u}-${q.rep}`,name:`${nm} — ${q.rep}`,out:orient(q.c[0],true),holes:q.c.slice(1).map(h=>orient(h,false)),...(pkL.length?{pkL}:{})});}
@@ -47,7 +50,7 @@ onmessage=e=>{const d=e.data,parts=d.parts,S=d.P.SL*d.P.SW,ar=p=>Math.abs(area(p
       if(!r||r.big.length||!r.sheets.length){postMessage({id:d.id,step:'err',msg:'pièce plus grande que la plaque'});return;}
       const fast=r.sheets.map(sh=>sh.items.map(it=>({k:idx.get(it.p.id),x:it.x,y:it.y,rot:!!it.rot,r2:!!it.r2})));tg=fast.length-1;
       // une plaque de moins : seulement si la surface des pièces le permet (essais : atteinte jusqu'à 76,5 % de remplissage, jamais à 77 % et plus)
-      const go=!d.fastOnly&&tg>=1&&A<=(d.fill||0.767)*tg*S;
+      const go=!d.fastOnly&&tg>=1&&A<=(d.fill||0.767*(d.P.SL-2*d.P.mg)*(d.P.SW-2*d.P.mg)/((d.P.SL-30)*(d.P.SW-30)))*tg*S;
       postMessage({id:d.id,step:'fast',sheets:fast,ms:Date.now()-t0,m2:A/1e6,go});
       if(!go){postMessage({id:d.id,step:'done',ok:false,why:'surface',tries:0,ms:0});return;}}
     const res=N7.search(parts.map(p=>({out:p.out,holes:p.holes||[]})),{SL:d.P.SL,SW:d.P.SW,mg:d.P.mg,sp:d.P.sp,g:2,nmax:tg,budget:d.budget,seed:d.seed||1,rot:d.rot||0,maxTries:d.maxTries,kMode:1,kScan:0.02,giveUp:{after:8,left:6}},(n,s,u)=>postMessage({id:d.id,step:'try',n,left:u}));

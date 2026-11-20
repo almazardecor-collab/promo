@@ -12972,7 +12972,8 @@ const srMe=()=>{const L=srList();return (ME&&L.find(x=>x.id===ME.sr)||L[0]).id;}
 const mlOf=o=>{const l=lgOf(o);return ((+l.fond||0)+(+l.rg||0)+(+l.rd||0))/100;};
 const extraOf=(o,st=S.settings)=>{const x=mlOf(o)-st.mlBase-(+st.tolMl||0),a=Math.max(0.1,+st.arr||1);return x>1e-9?Math.round(Math.ceil(x/a-1e-9)*a*100)/100:0;};
 const zoneOf=(o,st=S.settings)=>st.zones.find(z=>z.id===o.zoneId)||null;
-const lignes=(o,st=S.settings)=>{if(o.interne)return [['Salon pour le showroom — hors vente',0]];const L=[[`Salon marocain bois seul — jusqu’à ${fmt(st.mlBase)} ml (banquettes, 2 accoudoirs, table 110, 2 guéridons)`,st.base]];
+const tableOf=o=>{const v=+((o.releve&&o.releve.table)||o.table||(o.prod&&o.prod.fab&&o.prod.fab.tb));return v===120?120:110;};
+const lignes=(o,st=S.settings)=>{if(o.interne)return [['Salon pour le showroom — hors vente',0]];const L=[[`Salon marocain bois seul — jusqu’à ${fmt(st.mlBase)} ml (banquettes, 2 accoudoirs, table ${tableOf(o)}, 2 guéridons)`,st.base]];
   const ex=extraOf(o,st);if(ex>0)L.push([`Mètres en plus : ${fmt(ex,ex%1?1:0)} ml × ${fmt(st.pMl)} DH`,ex*st.pMl]);
   if(o.vitres)L.push(['Vitres de protection (table + 2 guéridons)',st.pVit]);
   const z=zoneOf(o,st);if(z)L.push(['Transport — '+z.nom,+z.prix||0]);
@@ -13055,8 +13056,8 @@ function vDash(){const st=S.settings,C=confirmees(),R=S.orders.filter(o=>statut(
    ${prodDash()}${delaisDash()}${livDash()}${srList().length>1?`<div class="card"><h2>Par showroom</h2><table><thead><tr><th>Showroom</th><th class="n">Confirmées</th><th class="n">CA</th><th class="n">Encaissé</th></tr></thead><tbody>${[...srList(),{id:'',nom:'Sans showroom'}].map(x=>{const c=C.filter(o=>(o.sr||'')===x.id&&!o.interne),e=S.orders.filter(o=>(o.sr||'')===x.id&&!o.annule&&!o.interne).reduce((s,o)=>s+payeOf(o),0);return x.id||c.length||e?`<tr><td>${esc(x.nom)}</td><td class="n">${c.length}</td><td class="n">${fmt(c.reduce((s,o)=>s+totalOf(o),0))}</td><td class="n">${fmt(e)}</td></tr>`:'';}).join('')}</tbody></table></div>`:''}<div class="card"><h2>Par vendeur</h2>${V.length?`<table><thead><tr><th>Vendeur</th><th class="n">Confirmées</th><th class="n">CA</th><th class="n">Encaissé</th></tr></thead><tbody>${V.map(u=>{const c=C.filter(o=>o.vendeurId===u.id);
      return `<tr><td>${esc(u.nom)}</td><td class="n">${c.length}</td><td class="n">${fmt(c.reduce((s,o)=>s+totalOf(o),0))}</td><td class="n">${fmt(S.orders.filter(o=>o.vendeurId===u.id&&!o.annule).reduce((s,o)=>s+payeOf(o),0))}</td></tr>`;}).join('')}</tbody></table>`:'<p class="muted">Aucune commande pour l’instant.</p>'}</div>
    <div class="row"><button class="btn" id="bCsv">Exporter les commandes (CSV)</button></div>`);
-  $('bCsv').onclick=()=>{const H=['Code','Statut','Date','Vendeur','Showroom','Canal','Client','Téléphone','Ville','Quartier','ml','ml en plus','Vitres','Transport','Remise','Total','Encaissé','Reste','Rang','Livraison prévue','Jour de livraison','Livrée le'];
-    const L=S.orders.map(o=>[o.code,ST[etat(o)],fdt(o.createdAt),userOf(o.vendeurId).nom,(srOf(o)||{nom:''}).nom,o.canal,o.client.nom,o.client.tel,o.client.ville,o.client.quartier,mlOf(o),extraOf(o),o.vitres?'oui':'non',(zoneOf(o)||{}).prix||0,o.remise||0,totalOf(o),payeOf(o),resteOf(o),o.confirmedAt?rangOf(o):'',o.confirmedAt?fdate(livOf(o)):'',o.liv&&o.liv.date?fdate(o.liv.date+'T12:00:00'):'',livree(o)?fdate(o.liv.fin.at):'']);
+  $('bCsv').onclick=()=>{const H=['Code','Statut','Date','Vendeur','Showroom','Canal','Client','Téléphone','Ville','Quartier','ml','ml en plus','Table','Vitres','Transport','Remise','Total','Encaissé','Reste','Rang','Livraison prévue','Jour de livraison','Livrée le'];
+    const L=S.orders.map(o=>[o.code,ST[etat(o)],fdt(o.createdAt),userOf(o.vendeurId).nom,(srOf(o)||{nom:''}).nom,o.canal,o.client.nom,o.client.tel,o.client.ville,o.client.quartier,mlOf(o),extraOf(o),tableOf(o),o.vitres?'oui':'non',(zoneOf(o)||{}).prix||0,o.remise||0,totalOf(o),payeOf(o),resteOf(o),o.confirmedAt?rangOf(o):'',o.confirmedAt?fdate(livOf(o)):'',o.liv&&o.liv.date?fdate(o.liv.date+'T12:00:00'):'',livree(o)?fdate(o.liv.fin.at):'']);
     saveFile('commandes-promo-bois-'+new Date().toISOString().slice(0,10)+'.csv','﻿'+[H,...L].map(r=>r.map(c=>'"'+String(c??'').replace(/"/g,'""')+'"').join(';')).join('\r\n'),'text/csv');};}
 
 /* ---------- liste ---------- */
@@ -13075,7 +13076,7 @@ function vList(){if(isOp()||isLiv())return go(home());let mine=isG()?S.orders:S.
 
 /* ---------- nouvelle commande ---------- */
 let DRAFT=null;
-const newDraft=()=>({interne:false,canal:'Showroom',client:{nom:'',tel:'',ville:'',quartier:''},forme:'U',lg:{fond:'',rg:'',rd:''},vitres:false,zoneId:zonesOk()[0]?.id||'',remise:0,remiseMotif:'',notes:'',sr:srMe()});
+const newDraft=()=>({interne:false,canal:'Showroom',client:{nom:'',tel:'',ville:'',quartier:''},forme:'U',lg:{fond:'',rg:'',rd:''},vitres:false,zoneId:zonesOk()[0]?.id||'',remise:0,remiseMotif:'',notes:'',sr:srMe(),table:110});
 let FSR='tous';
 function vNew(){if(isOp()||isLiv())return go(home());const st=S.settings;if(!DRAFT)DRAFT=newDraft();const d=DRAFT;const plein=actives().length>=st.quota;
   if(plein&&!isG()){shell('Promo Salon <b>Bois</b>','Nouvelle commande',`<div class="msg err">Les ventes sont fermées : les ${st.quota} salons sont pris.</div>`);return;}
@@ -13089,6 +13090,7 @@ function vNew(){if(isOp()||isLiv())return go(home());const st=S.settings;if(!DRA
     <div class="g2"><div><label class="f" for="cV">Ville</label><input type="text" id="cV" value="${esc(d.client.ville)}"></div><div><label class="f" for="cQ">Quartier</label><input type="text" id="cQ" value="${esc(d.client.quartier)}"></div></div>
     <label class="f">Commande prise par</label>${seg('canal',['Showroom','Live','WhatsApp'],d.canal)}`}</div>
    <div class="card"><h2>Salon</h2><label class="f">Forme</label>${seg('forme',['U','L','Droit'],d.forme)}
+     <label class="f">Grande table (même prix)</label><div class="seg" role="group">${[110,120].map(v=>`<button type="button" data-tb="${v}" aria-pressed="${(+d.table===120?120:110)===v}">Ø ${v} cm</button>`).join('')}</div>
     <label class="f">${I?'Cotes de fabrication, mur à mur (cm)':'Longueurs mur à mur annoncées par le client (cm)'}</label>
     <div class="g3"><div><label class="f" for="lF">Fond</label><input type="number" class="num" id="lF" inputmode="numeric" value="${esc(d.lg.fond)}"></div>
      <div><label class="f" for="lG">Retour gauche</label><input type="number" class="num" id="lG" inputmode="numeric" value="${esc(d.lg.rg)}" ${d.forme==='Droit'?'disabled':''}></div>
@@ -13108,13 +13110,13 @@ function vNew(){if(isOp()||isLiv())return go(home());const st=S.settings;if(!DRA
     $('bar').innerHTML=`<span>Total <b class="big">${dh(t)}</b></span><span class="muted">acompte ${dh(acDu(d))}</span>`;};
   document.querySelectorAll('.app input,.app select,.app textarea').forEach(el=>el.addEventListener('input',sm));
   document.querySelectorAll('[data-sr]').forEach(b=>b.onclick=()=>{rd();d.sr=b.dataset.sr;vNew();});
-  document.querySelectorAll('[data-seg]').forEach(b=>b.onclick=()=>{rd();if(b.dataset.seg==='type')d.interne=b.dataset.v!=='Client';else d[b.dataset.seg]=b.dataset.v;vNew();});sm();
+  document.querySelectorAll('[data-seg]').forEach(b=>b.onclick=()=>{rd();if(b.dataset.seg==='type')d.interne=b.dataset.v!=='Client';else d[b.dataset.seg]=b.dataset.v;vNew();});document.querySelectorAll('[data-tb]').forEach(b=>b.onclick=()=>{rd();d.table=+b.dataset.tb;vNew();});sm();
   $('bSave').onclick=async()=>{rd();const GP=$('oP')?$('oP').value.trim():'';const e=$('nE'),err=t=>{e.textContent=t;e.hidden=false;e.scrollIntoView({block:'center'});};
     if(!isG()||!srOf(d))d.sr=srMe();if(I&&!d.client.nom.trim())d.client.nom=srNom(d);if(I&&!d.client.ville.trim())d.client.ville=srOf(d).nom;
     if(!d.client.nom.trim())return err(I?'Le nom du showroom est obligatoire.':'Le nom du client est obligatoire.');if(!I&&telN(d.client.tel).length<9)return err('Le téléphone WhatsApp du client est obligatoire.');
     if(!(+d.lg.fond>0))return err('Indique au moins la longueur du fond.');
     if(cotesMin(d.forme,d.lg))return err(cotesMin(d.forme,d.lg));
-    if(I){const c=nextCode(true),now=new Date().toISOString(),o={id:uid(),...c,createdAt:now,vendeurId:ME.id,interne:true,sr:d.sr,canal:'Showroom',client:{nom:d.client.nom.trim(),tel:'',ville:d.client.ville,quartier:''},forme:d.forme,lg:{...d.lg},vitres:false,zoneId:'',remise:0,remiseMotif:'',notes:d.notes,pays:[],releve:{...d.lg,notes:d.notes,date:now,par:ME.id}};
+    if(I){const c=nextCode(true),now=new Date().toISOString(),o={id:uid(),...c,createdAt:now,vendeurId:ME.id,interne:true,sr:d.sr,canal:'Showroom',client:{nom:d.client.nom.trim(),tel:'',ville:d.client.ville,quartier:''},forme:d.forme,table:+d.table===120?120:110,lg:{...d.lg},vitres:false,zoneId:'',remise:0,remiseMotif:'',notes:d.notes,pays:[],releve:{...d.lg,table:+d.table===120?120:110,notes:d.notes,date:now,par:ME.id}};
       if(!(await addOrder(o,GP,err)))return;DRAFT=null;flash('Commande showroom '+o.code+' enregistrée. Valide-la pour la production.');return go('ord',o.id);}
     if(d.remise>0&&!ONLINE&&!S.users.some(u=>u.role==='gerant'&&u.pin===GP))return err('Remise refusée : il faut le code du gérant.');
     if(d.remise>0)d.remiseMotif='accordée par le gérant';
@@ -13131,7 +13133,7 @@ function vOrd(){if(isOp()||isLiv())return go(home());const o=S.orders.find(x=>x.
   const canPay=s!=='ann'&&!o.interne,cncFait=!!(o.prod&&o.prod.steps&&o.prod.steps.cnc),canRel=(!!o.confirmedAt||!!o.interne)&&s!=='ann'&&(s!=='val'||(isG()&&!cncFait));
   shell(`${esc(o.client.nom)}`,`${o.code} · ${tagH(livree(o)?'liv':s)}`,`${hExp}
    <div class="card"><h2>Commande</h2><p style="margin:0 0 6px">${esc(o.client.tel)} · ${esc([o.client.ville,o.client.quartier].filter(Boolean).join(', '))}<br><span class="muted">${srNom(o)?esc(srNom(o))+' · ':''}${o.canal==='Showroom'&&srNom(o)?'':esc(o.canal)+' · '}${esc(userOf(o.vendeurId).nom)} · ${fdt(o.createdAt)}</span></p>${isG()&&srList().length>1?`<div style="max-width:260px;margin:0 0 8px"><label class="f" for="oSr">Point de vente</label><select id="oSr">${srOf(o)?'':'<option value="">à choisir</option>'}${srList().map(x=>`<option value="${x.id}" ${o.sr===x.id?'selected':''}>Showroom ${esc(x.nom)}</option>`).join('')}</select></div>`:''}
-    <p style="margin:0 0 6px">Forme ${esc(o.forme)} · ${o.releve?'cotes relevées':'longueurs annoncées'} : fond ${fmt(lgOf(o).fond||0)}${lgOf(o).rg?' · gauche '+fmt(lgOf(o).rg):''}${lgOf(o).rd?' · droit '+fmt(lgOf(o).rd):''} cm = <b>${fmt(mlOf(o),2)} ml</b></p>
+    <p style="margin:0 0 6px">Forme ${esc(o.forme)} · table Ø ${tableOf(o)} · ${o.releve?'cotes relevées':'longueurs annoncées'} : fond ${fmt(lgOf(o).fond||0)}${lgOf(o).rg?' · gauche '+fmt(lgOf(o).rg):''}${lgOf(o).rd?' · droit '+fmt(lgOf(o).rd):''} cm = <b>${fmt(mlOf(o),2)} ml</b></p>
     <table><tbody>${L.map(([l,m])=>`<tr><td>${esc(l)}</td><td class="n">${fmt(m)}</td></tr>`).join('')}<tr class="tot"><td>Total</td><td class="n">${dh(t)}</td></tr>
      <tr><td>Encaissé</td><td class="n pos">${dh(p)}</td></tr><tr><td>Reste à payer</td><td class="n">${dh(t-p)}</td></tr></tbody></table>
     ${o.interne?'<p class="muted" style="margin:8px 0 0">Commande showroom : sans paiement, hors quota.</p>':o.confirmedAt?`<p style="margin:8px 0 0">Rang <b>${rangOf(o)}</b> · ${livree(o)?'livré le <b>'+fdate(o.liv.fin.at)+'</b>':o.liv&&o.liv.date?'livraison prévue le <b>'+jourL(o.liv.date)+'</b> (semaine promise : '+fdate(livOf(o))+')':'livraison prévue la semaine du <b>'+fdate(livOf(o))+'</b>'}</p>${acOk(o)?'':`<div class="msg err" id="acK">Le total a augmenté : il manque <b>${dh(acManque(o))}</b> pour atteindre l’acompte de ${st.acPct} %. La date de livraison n’est plus valable pour le client tant que ce complément n’est pas versé.</div>`}`:`<p class="muted" style="margin:8px 0 0">Date indicative, à ne pas promettre au client : si l’acompte de ${st.acPct} % est versé aujourd’hui, rang ${rangOf(o)}, livraison la semaine du ${fdate(livOf(o))}. La date n’est valable qu’après l’acompte.</p>`}
@@ -13140,9 +13142,10 @@ function vOrd(){if(isOp()||isLiv())return go(home());const o=S.orders.find(x=>x.
     ${canPay?`<div class="g2"><div><label class="f" for="pM">Montant reçu (DH)</label><input type="number" class="num" id="pM" inputmode="numeric" placeholder="${o.confirmedAt&&acOk(o)?Math.max(0,t-p):Math.max(0,ad-p)}"></div><div><label class="f" for="pMo">Mode</label><select id="pMo"><option>Espèces</option><option>Virement</option></select></div></div>
     <label class="f" for="pF">Photo du justificatif (virement, reçu)</label><input type="file" id="pF" accept="image/*" capture="environment">
     <p id="pE" class="msg err" hidden></p><button class="btn pri full" id="bPay" style="margin-top:10px">Enregistrer le paiement</button>`:''}</div>
-   <div class="card"><h2>Relevé des cotes chez le client</h2>${!o.releve&&o.confirmedAt&&!o.interne&&s!=='ann'?`<p class="${relTard(o)?'neg':'muted'}" style="margin:0 0 6px">${relTard(o)?'En retard : le relevé devait être fait avant le ':'À faire avant le '}${fdate(relLimite(o))}.</p>`:''}${o.releve?`<p style="margin:0 0 6px">Relevé le ${fdate(o.releve.date)} par ${esc(userOf(o.releve.par).nom)} : fond ${fmt(o.releve.fond||0)}${o.releve.rg?' · gauche '+fmt(o.releve.rg):''}${o.releve.rd?' · droit '+fmt(o.releve.rd):''} cm${o.releve.notes?'<br><span class="muted">'+esc(o.releve.notes)+'</span>':''}</p>`:''}
+   <div class="card"><h2>Relevé des cotes chez le client</h2>${!o.releve&&o.confirmedAt&&!o.interne&&s!=='ann'?`<p class="${relTard(o)?'neg':'muted'}" style="margin:0 0 6px">${relTard(o)?'En retard : le relevé devait être fait avant le ':'À faire avant le '}${fdate(relLimite(o))}.</p>`:''}${o.releve?`<p style="margin:0 0 6px">Relevé le ${fdate(o.releve.date)} par ${esc(userOf(o.releve.par).nom)} : fond ${fmt(o.releve.fond||0)}${o.releve.rg?' · gauche '+fmt(o.releve.rg):''}${o.releve.rd?' · droit '+fmt(o.releve.rd):''} cm · table Ø ${tableOf(o)}${o.releve.notes?'<br><span class="muted">'+esc(o.releve.notes)+'</span>':''}</p>`:''}
     ${canRel?`<div class="g3"><div><label class="f" for="rF">Fond (cm)</label><input type="number" class="num" id="rF" inputmode="numeric" value="${esc(lgOf(o).fond)}"></div><div><label class="f" for="rG">Retour gauche</label><input type="number" class="num" id="rG" inputmode="numeric" value="${esc(lgOf(o).rg)}" ${o.forme==='Droit'?'disabled':''}></div><div><label class="f" for="rD">Retour droit</label><input type="number" class="num" id="rD" inputmode="numeric" value="${esc(lgOf(o).rd)}" ${o.forme!=='U'?'disabled':''}></div></div>
-    <label class="f" for="rN">Remarques (plinthe, prise, porte, angle…)</label><textarea id="rN" rows="2">${esc(o.releve?.notes||'')}</textarea>
+    <label class="f" for="rT">Grande table : diamètre confirmé par le client</label><select id="rT"><option value="110" ${tableOf(o)===110?'selected':''}>Ø 110 cm</option><option value="120" ${tableOf(o)===120?'selected':''}>Ø 120 cm</option></select>
+       <label class="f" for="rN">Remarques (plinthe, prise, porte, angle…)</label><textarea id="rN" rows="2">${esc(o.releve?.notes||'')}</textarea>
     ${s==='val'?'<p class="muted" style="font-size:.85rem;margin:8px 0 0">Commande déjà validée : en corrigeant les cotes, les fiches de fabrication sont recalculées.</p>':''}<button class="btn full" id="bRel" style="margin-top:10px">${o.releve?(o.interne?'Corriger les cotes':'Corriger le relevé'):'Enregistrer le relevé'}</button>`:`<p class="muted">${o.confirmedAt||o.interne?(s==='val'?(cncFait?'La découpe CNC est validée : les cotes ne peuvent plus changer.':'Commande validée : seul le gérant peut encore corriger les cotes.'):''):'Le relevé se fait après l’acompte.'}</p>`}</div>
    <div class="card" id="cDoc"><h2>Documents pour le client</h2><div class="row"><button class="btn pri" id="bPdf">Bon de commande (PDF)</button><button class="btn" id="bWa">Message WhatsApp</button><button class="btn" id="bLien">Copier le lien de suivi</button></div><p id="dM" class="muted" style="font-size:.85rem;margin:8px 0 0" aria-live="polite"></p></div>
    ${reportCard(o)}${prodOrdCard(o)}${livOrdCard(o)}<div class="card"><h2>Actions</h2><div class="row">
@@ -13158,7 +13161,7 @@ function vOrd(){if(isOp()||isLiv())return go(home());const o=S.orders.find(x=>x.
     o.pays.push({id:uid(),date:new Date().toISOString(),montant:m,mode:$('pMo').value,par:ME.id,photo});const was=!!o.confirmedAt;majConfirm(o);
     if(!Store.save()&&photo){o.pays[o.pays.length-1].photo='';Store.save();flash('Paiement enregistré, mais la photo n’a pas pu être gardée (mémoire pleine).','err');}
     else flash((!was&&o.confirmedAt?'Acompte reçu : commande confirmée, rang '+rangOf(o)+'.':'Paiement enregistré.')+(phKo?' La photo n’a pas pu être envoyée (pas de connexion).':''),phKo?'err':'ok');vOrd();};
-  if($('bRel'))$('bRel').onclick=()=>{const r={fond:$('rF').value,rg:o.forme==='Droit'?'':$('rG').value,rd:o.forme==='U'?$('rD').value:'',notes:$('rN').value,date:new Date().toISOString(),par:ME.id};
+  if($('bRel'))$('bRel').onclick=()=>{const r={fond:$('rF').value,rg:o.forme==='Droit'?'':$('rG').value,rd:o.forme==='U'?$('rD').value:'',table:+$('rT').value===120?120:110,notes:$('rN').value,date:new Date().toISOString(),par:ME.id};
     if(!(+r.fond>0)){flash('Indique au moins la cote du fond.','err');return vOrd();}if(cotesMin(o.forme,r)){flash(cotesMin(o.forme,r),'err');return vOrd();}const t0=totalOf(o);o.releve=r;Store.save();const t1=totalOf(o);
     if(o.lotId&&ONLINE)Fab.prepare([o.id]).then(x=>{if(VIEW!=='ord'||ARG!==o.id)return;if(x.ko.length)flash('Cotes enregistrées, mais fiches non recalculées : '+fabErr(x.ko[0][1])+'.','err');else flash('Cotes corrigées : les fiches de fabrication du salon '+court(o)+' sont recalculées.');vOrd();});
     flash('Relevé enregistré.'+(t1!==t0?' Le total passe de '+dh(t0)+' à '+dh(t1)+'.':' Le prix ne change pas.'));vOrd();};
@@ -13364,7 +13367,7 @@ async function openScanner(cb){closeScanner();const ov=document.createElement('d
   }catch(e){msg('Caméra indisponible ici. Tape le code écrit en gros sur la fiche.');const i=ov.querySelector('#scT');if(i)i.focus();}}
 
 /* ---------- morceaux communs ---------- */
-const tagsP=o=>`${o.prod&&o.prod.prio?'<span class="tag prio">Prioritaire</span> ':''}${bloque(o)?'<span class="tag exp">Bloqué</span> ':''}${enRetard(o)?'<span class="tag exp">En retard</span> ':''}${livree(o)?'<span class="tag liv">Livré</span>':pret(o)?'<span class="tag conf">'+(enTour(o)?'En tournée':'Prêt à livrer'+(n=>n>=1?' depuis '+n+' j':'')(Math.floor((Date.now()-new Date(o.prod.steps.emb.at).getTime())/864e5)))+'</span>':''}`;
+const tagsP=o=>`${tableOf(o)===120?'<span class="tag cot">Table 120</span> ':''}${o.prod&&o.prod.prio?'<span class="tag prio">Prioritaire</span> ':''}${bloque(o)?'<span class="tag exp">Bloqué</span> ':''}${enRetard(o)?'<span class="tag exp">En retard</span> ':''}${livree(o)?'<span class="tag liv">Livré</span>':pret(o)?'<span class="tag conf">'+(enTour(o)?'En tournée':'Prêt à livrer'+(n=>n>=1?' depuis '+n+' j':'')(Math.floor((Date.now()-new Date(o.prod.steps.emb.at).getTime())/864e5)))+'</span>':''}`;
 const dots=o=>`<span class="dots" role="img" aria-label="${nbDone(o)} étapes finies sur ${STEPS.length}">${STEPS.map(s=>`<i class="${done(o,s.k)?'d':dispo(o,s.k)?'c':''}"></i>`).join('')}</span>`;
 const cotes=o=>{const l=lgOf(o);return `fond ${fmt(l.fond||0)}${l.rg?' · gauche '+fmt(l.rg):''}${l.rd?' · droit '+fmt(l.rd):''} cm`;};
 function prodKpi(){const P=enProd(),pb=P.filter(bloque),rt=P.filter(o=>enRetard(o));
@@ -13386,12 +13389,12 @@ function facesOf(o){const l=lgOf(o),F=(+l.fond||0)*10,G=(+l.rg||0)*10,D=(+l.rd||
 function barresDe(o,L){const P=[];facesOf(o).forEach(l=>{const n=Math.max(1,Math.ceil((l+10)/L));for(let i=0;i<n;i++)P.push(Math.round(l/n));});P.sort((a,b)=>b-a);const B=[];
   for(const q of P){let b=B.find(x=>x.reduce((t,y)=>t+y+10,0)+q<=L);if(!b){b=[];B.push(b);}b.push(q);}return B.length;}
 function achats(O,lot){const st=S.settings,n=O.length,L=(+(lot&&lot.barre)||+st.barre||250),nb=O.reduce((t,o)=>t+barresDe(o,L*10),0),k=1+(+st.plCh||0)/100,
-   mf=O.reduce((t,o)=>t+facesOf(o).reduce((a,x)=>a+x,0)/1000,0),np=O.reduce((t,o)=>t+(Fab.calOk(o)?o.prod.fab.cal.n:7),0),ne=O.filter(o=>!Fab.calOk(o)).length,noy=(PLQ.noy*n+PLQ.bande*mf)*k,che=(PLQ.che*n+PLQ.arc*mf)*k,lg=O.filter(o=>mlOf(o)>10.2).length,
+   mf=O.reduce((t,o)=>t+facesOf(o).reduce((a,x)=>a+x,0)/1000,0),np=O.reduce((t,o)=>t+(Fab.calOk(o)?o.prod.fab.cal.n:7),0),ne=O.filter(o=>!Fab.calOk(o)).length,n120=O.filter(o=>tableOf(o)===120).length,noy=(PLQ.noy*n+0.19*n120+PLQ.bande*mf)*k,che=(PLQ.che*n+PLQ.arc*mf)*k,lg=O.filter(o=>mlOf(o)>10.2).length,
    kg=(v,nom)=>+v>0?`${nom} : <b>${fmt(v*n,Number.isInteger(Math.round(v*n*100)/10)?1:2)} kg</b>`:`${nom} : <span class="warn">à régler</span>`,
    Q=O.reduce((t,o)=>{const q=(o.prod&&o.prod.fab&&o.prod.fab.q)||QUI[o.forme]||QUI.U;for(const k in q)t[k]=(t[k]||0)+q[k];return t;},{}),pt=Math.max(0,+st.patinsT||0)*n;
   return `<table class="ach"><tbody><tr><td><b>Panneaux</b></td><td>CP 15 (122 × 244) : <b>${np} plaques</b>${ne&&ONLINE?` <span class="muted">(${ne} salon${ne>1?'s':''} à 7 en attendant le calepinage)</span>`:''}<br>CP 3 (122 × 300) : <b>${n} plaque${n>1?'s':''}</b></td></tr>
    <tr><td><b>Bois massif</b></td><td>Barres 8 × 4 de ${fmt(L)} cm : <b>${nb} barres</b><br><span class="muted">${fmt(mf,1)} m de faces</span></td></tr>
-   <tr><td><b>Placage</b></td><td>Noyer : <b>${fmt(noy,1)} m²</b><br>Chêne : <b>${fmt(che,1)} m²</b><br><span class="muted">chutes de ${fmt(+st.plCh||0)} % comprises</span></td></tr>
+   <tr><td><b>Placage</b></td><td>Noyer : <b>${fmt(noy,1)} m²</b><br>Chêne : <b>${fmt(che,1)} m²</b><br><span class="muted">chutes de ${fmt(+st.plCh||0)} % comprises${n120?' · '+n120+' table'+(n120>1?'s':'')+' Ø 120':''}</span></td></tr>
    <tr><td><b>Colles et Sintofer</b></td><td>${kg(st.colleKg,'Colle de placage')}<br>${kg(st.blancheKg,'Colle blanche à bois')}<br>${kg(st.sintoKg,'Sintofer de rebouchage')}</td></tr>
    <tr><td><b>Quincaillerie</b></td><td>Vérins M8 : <b>${Q.ver}</b><br>Inserts M8 : <b>${Q.ver+QTAB.insM8*n}</b> <span class="muted">(vérins + plateaux)</span><br>Vis M8 des plateaux : <b>${QTAB.visM8*n}</b><br>Inserts M6 + vis M6 × 30 : <b>${Q.m6}</b><br>Vis à bois 4 × 30 : <b>${Q.v30}</b><br>Vis à bois 4 × 40 : <b>${Q.v40}</b><br>Patins feutre des caisses : <b>${Q.feu}</b><br>Patins de table et guéridons : <b>${pt}</b></td></tr></tbody></table>
    <p class="muted" style="font-size:.85rem;margin:6px 0 0">Une ligne par déplacement. Plaques CP 15 : ${ONLINE?'nombre du calepinage de chaque salon (7 tant qu’il n’est pas calculé)':'base du prototype de 10,2 ml'}.${lg&&ne?' '+lg+' salon(s) de plus de 10,2 ml : attendre le calepinage pour commander.':''} Placage : surfaces du modèle (accoudoirs sur les 2 joues, dessus et chants des plateaux, dessous non compté). Quincaillerie : quantités du modèle selon la forme du salon (U, L ou droit). Emballage pas encore compté.</p>`;}
@@ -13612,7 +13615,7 @@ function elev(t,nom){const W=t.pl,k=(W+760)/1020,ox=W/2,top=Math.round(110*k),y0
    ${txt('Ø '+cm(W,0),ox,52*k,{s:70*k,b:1})}${txt('Ø '+cm(2*t.rh1,0),ox,y0+(ys-y0)/2,{s:50*k,b:1})}${txt('Ø '+cm(2*t.rs,0),ox,ys+62*k,{s:50*k,b:1,c:'#fff'})}${txt('Ø '+cm(2*t.rb,0),ox,yb-45*k,{s:50*k,b:1,c:'#fff'})}
    ${dim(ox-t.rb-70*k,y0,ys,cm(t.h-t.hb,0))}${dim(ox-t.rb-70*k,ys,yb,cm(t.hb,0))}${dim(W+90*k,top,yb+t.hs,cm(tot))}
    ${txt('socle Ø '+cm(t.ds,0),ox,yb+t.hs+75*k,{s:46*k,c:MUT})}</svg></div>`;}
-function tab(D){return head({code:'STD',nom:'Fiche standard, la même pour tous les salons'},qui(D,'tab','Yassine · Youssef'),'Table + 2 guéridons')+chips(['<b>1</b> table','<b>2</b> guéridons','sans étiquettes'])+legT+elev(D.table,'Table')+elev(D.guer,'Guéridon × 2');}
+function tab(D){return head({code:'STD',nom:'Fiche standard, la même pour tous les salons'},qui(D,'tab','Yassine · Youssef'),'Table + 2 guéridons')+chips(['<b>1</b> table Ø '+Math.round(D.table.pl/10),'<b>2</b> guéridons','sans étiquettes'])+legT+elev(D.table,'Table')+elev(D.guer,'Guéridon × 2');}
 
 /* 5 — Faces + accoudoirs */
 function facePlan(D,angles,col){const cxr=D.W/2,cyr=D.H*0.62;const F=D.faces.map(f=>{const mx=(f.a[0]+f.b[0])/2,my=(f.a[1]+f.b[1])/2,dx=f.b[0]-f.a[0],dy=f.b[1]-f.a[1],l=Math.hypot(dx,dy);let nx=-dy/l,ny=dx/l;if((cxr-mx)*nx+(cyr-my)*ny<0){nx=-nx;ny=-ny;}
@@ -13659,7 +13662,7 @@ const CP3STD=[{"n":1,"prog":"CP3","SL":3000,"SW":1220,"used":2450,"np":27,"nh":0
 const Fab=(()=>{
   const ATT_S=300,ATT_W=6,   // attaches « petites pièces » : moins de 300 cm² (réglable) ou moins de 6 cm de large
   attS=()=>{const a=+S.settings.att;return a>=50?a:ATT_S;},
-  GENV='19p3',GENF='19p5',CALV=1,CALB=480000,CFG0={pCo:1,sty:0,P:750,em:300,ang:1,c:300,eS:15,SL:2440,SW:1220,fm:2,F:120,hP:40,endG:1,endD:1,accG:1,accD:1,acT:2,acSame:1,acH:382.5,tPl:20,hPl:90};
+  GENV='19p3',GENF='19p6',CALV=1,CALB=480000,CFG0={pCo:1,sty:0,P:750,em:300,ang:1,c:300,eS:15,SL:2440,SW:1220,fm:2,F:120,hP:40,endG:1,endD:1,accG:1,accD:1,acT:2,acSame:1,acH:382.5,tPl:20,hPl:90};
   const TABLE={pl:1100,ep:30,rb:325,rs:206.5,rh0:176.5,rh1:120,hb:420,h:620,ds:610,hs:15,lis:60},GUER={pl:500,ep:30,rb:170,rs:110,rh0:90,rh1:60,hb:360,h:540,ds:300,hs:15,lis:50};
   let fr=null,ready=null,busy=false;
   function load(){if(ready)return ready;
@@ -13694,7 +13697,7 @@ const Fab=(()=>{
     const acc=['G','D'].filter(k=>g.acc&&g.acc[k]).map(k=>{const a=g.acc[k],b=a.bb;return {id:'AC'+k,nm:k==='G'?'Gauche':'Droit',x0:fx(b[2]),y0:r1(b[1]),x1:fx(b[0]),y1:r1(b[3]),l:Math.round(Math.max(b[2]-b[0],b[3]-b[1])),w:a.W,h:500};});
     return {v:1,gen:GENV,at:new Date().toISOString(),W:Math.round(W),H:Math.round(Math.max(g.Ly,CFG0.P+250)),P:CFG0.P,lgc:{fond:+lg.fond||0,rg:+lg.rg||0,rd:+lg.rd||0},
       banq,ang:ang.map((a,i)=>({id:'AN'+(i+1),p:a.p.map(q=>[fx(q[0]),r1(q[1])])})),acc,faces,nEtq:g.nCarc,nPcs:g.nCarc+87,...(hwq(g.hw)?{q:hwq(g.hw)}:{})};}
-  const cfgOf=o=>{const lg=lgOf(o),F=+lg.fond||0,G=+lg.rg||0,D=+lg.rd||0;return {...CFG0,forme:o.forme==='U'?3:o.forme==='L'?1:0,L2:F*10,L1:o.forme==='Droit'?0:G*10,L3:o.forme==='U'?D*10:0};};
+  const cfgOf=o=>{const lg=lgOf(o),F=+lg.fond||0,G=+lg.rg||0,D=+lg.rd||0;return {...CFG0,forme:o.forme==='U'?3:o.forme==='L'?1:0,L2:F*10,L1:o.forme==='Droit'?0:G*10,L3:o.forme==='U'?D*10:0,...(tableOf(o)===120?{tb:120,mg:10}:{})};};   // table Ø 120 : le plateau prend toute la largeur de la plaque, marge de 10 mm
   async function make(o){const lg=lgOf(o),F=+lg.fond||0,G=+lg.rg||0,D=+lg.rd||0;
     if(!(F>0)||(o.forme!=='Droit'&&!(G>0))||(o.forme==='U'&&!(D>0)))throw new Error('cotes incomplètes');
     const W=await load(),c=cfgOf(o);
@@ -13704,13 +13707,13 @@ const Fab=(()=>{
     return build(o,g);}
   // dossier complet pour l'affichage d'une fiche
   function dossier(o){const f=o.prod&&o.prod.fab;if(!f)return null;const l=lotOf(o),lg=lgOf(o),q={};POSTES.forEach(p=>{q[p.k]=opsDe(p.k).join(' · ');});
-    return {...f,code:court(o),nom:o.client.nom+' · '+o.code,forme:o.forme,lg:{fond:+lg.fond||0,rg:+lg.rg||0,rd:+lg.rd||0},SL:2440,SW:1220,barres:{L:((l&&l.barre)||S.settings.barre||250)*10},plaques:(planGet(o)||{}).pl||[],cal:calInfo(o),cp3:CP3STD,table:TABLE,guer:GUER,qui:q};}
+    return {...f,code:court(o),nom:o.client.nom+' · '+o.code,forme:o.forme,lg:{fond:+lg.fond||0,rg:+lg.rg||0,rd:+lg.rd||0},SL:2440,SW:1220,barres:{L:((l&&l.barre)||S.settings.barre||250)*10},plaques:(planGet(o)||{}).pl||[],cal:calInfo(o),cp3:CP3STD,table:f.tb===120?{...TABLE,pl:1200}:TABLE,guer:GUER,qui:q};}
   // les cotes ont-elles changé depuis le calcul ?
-  const perime=o=>{const f=o.prod&&o.prod.fab,lg=lgOf(o);return !!f&&((f.gen!==GENV&&!done(o,'cnc'))||!f.lgc||f.lgc.fond!==(+lg.fond||0)||f.lgc.rg!==(+lg.rg||0)||f.lgc.rd!==(+lg.rd||0));};
+  const perime=o=>{const f=o.prod&&o.prod.fab,lg=lgOf(o);return !!f&&((f.gen!==GENV&&!done(o,'cnc'))||!f.lgc||f.lgc.fond!==(+lg.fond||0)||f.lgc.rg!==(+lg.rg||0)||f.lgc.rd!==(+lg.rd||0)||(f.tb||110)!==tableOf(o));};
   // prépare les fiches d'une liste de salons, l'un après l'autre
   async function prepare(ids,onStep){if(busy)return {ok:0,ko:[['','calcul déjà en cours']]};busy=true;let ok=0;const ko=[];
     try{for(const id of ids){const o=S.orders.find(x=>x.id===id);if(!o)continue;if(onStep)onStep(o);
-        try{const old=o.prod&&o.prod.fab,f=await make(o);if(old&&old.cal&&old.gen===GENV&&old.lgc&&['fond','rg','rd'].every(k=>old.lgc[k]===f.lgc[k]))f.cal=old.cal;prodOf(o).fab=f;ok++;Store.save();}catch(e){ko.push([court(o),e.message||String(e)]);if(/introuvable|délai/.test(e.message||''))break;}}}
+        try{const old=o.prod&&o.prod.fab,tb=tableOf(o),f=await make(o);f.tb=tb;if(old&&old.cal&&old.gen===GENV&&(old.tb||110)===tb&&old.lgc&&['fond','rg','rd'].every(k=>old.lgc[k]===f.lgc[k]))f.cal=old.cal;prodOf(o).fab=f;ok++;Store.save();}catch(e){ko.push([court(o),e.message||String(e)]);if(/introuvable|délai/.test(e.message||''))break;}}}
     finally{busy=false;}
     return {ok,ko};}
   /* ----- calepinage CP 15 : plan rapide tout de suite, puis recherche d'une plaque de moins en arrière-plan (un salon à la fois) ----- */
@@ -13894,7 +13897,7 @@ function vLs(){const a=ARG||{},o=S.orders.find(x=>x.id===a.id),g=isG();if(!o||(!
       <p id="fiE" class="msg err" hidden></p><button class="btn pri full xl" id="bFin" style="margin-top:10px">Livraison terminée</button></div>`;
   const etapes=[['Contrôle + regroupement du voyage',ctrlOk(o),ctrlOk(o)?L.ctrl.colis+' colis · '+fdt(L.ctrl.at)+' · '+esc(userOf(L.ctrl.par).nom):t?'la veille, '+jourC(veille(t.date)):''],['Départ de la tournée',parti||livree(o),parti?fdt(t.parti.at):t?jourL(t.date):''],
     ...(o.interne?[]:[['Solde encaissé avant le montage',du<=0.5,du<=0.5?'rien à encaisser':'à encaisser : '+dh(du)]]),['Montage + photo du salon',livree(o),livree(o)?fdt(L.fin.at)+' · reçu par '+esc(L.fin.recu):'']],cur=etapes.findIndex(e=>!e[1]);
-  shell(`Salon <b>${court(o)}</b>`,`${esc(o.code)}${t?' · tournée '+t.num+' · '+jourC(t.date):''}`,`<div class="card"><div class="codeb"><span class="code">${court(o)}</span><span><b>${esc(o.client.nom)}</b><br>${esc(villeDe(o)||'—')}<br><span class="muted">Forme ${esc(o.forme)} : ${cotes(o)}</span></span></div>
+  shell(`Salon <b>${court(o)}</b>`,`${esc(o.code)}${t?' · tournée '+t.num+' · '+jourC(t.date):''}`,`<div class="card"><div class="codeb"><span class="code">${court(o)}</span><span><b>${esc(o.client.nom)}</b><br>${esc(villeDe(o)||'—')}<br><span class="muted">Forme ${esc(o.forme)} : ${cotes(o)} · table Ø ${tableOf(o)}</span></span></div>
      ${adr?`<p style="margin:8px 0 0">${url?`<a class="btn sm" href="${esc(adr)}" target="_blank" rel="noopener">Ouvrir l’adresse dans Maps</a>`:esc(adr)}</p>`:''}
      ${o.interne||!telN(o.client.tel)?'':`<div class="row" style="margin-top:10px"><a class="btn" href="tel:${telN(o.client.tel)}">Appeler ${esc(o.client.tel)}</a><a class="btn" href="https://wa.me/${telWa(o.client.tel)}" target="_blank" rel="noopener">WhatsApp</a></div>`}</div>
    <div style="margin-bottom:10px">${box}</div>
@@ -13957,7 +13960,7 @@ function blPdf(o){const {jsPDF}=window.jspdf,d=new jsPDF({unit:'mm',format:'a4'}
   T('WhatsApp : '+st.tel,M,y,{s:9,c:GR});T('Livré le '+fdate(L.fin.at),W-M,y,{s:9,a:'right',c:GR});y+=5;d.setDrawColor(207,214,211);d.setLineWidth(0.3);d.line(M,y,W-M,y);y+=8;
   H('CLIENT');T(o.client.nom,M,y,{b:1,s:12});y+=5.5;T('Téléphone : '+(o.client.tel||'-'),M,y);y+=5;T(villeDe(o)||'-',M,y);y+=10;
   d.setFillColor(227,238,246);d.rect(M,y-5,W-2*M,7,'F');T('LIVRÉ ET MONTÉ',M+2,y,{b:1,s:8});T('QUANTITÉ',W-M-2,y,{b:1,s:8,a:'right'});y+=7;
-  const rows=[[`Salon marocain bois seul - forme ${o.forme} : fond ${l.fond||0} cm${l.rg?' · retour gauche '+l.rg+' cm':''}${l.rd?' · retour droit '+l.rd+' cm':''} (${fmt(mlOf(o),2)} ml)`,'1'],['Accoudoirs','2'],['Table 110','1'],['Guéridons 50','2'],...(o.vitres?[['Vitres de protection (table + 2 guéridons)','3']]:[])];
+  const rows=[[`Salon marocain bois seul - forme ${o.forme} : fond ${l.fond||0} cm${l.rg?' · retour gauche '+l.rg+' cm':''}${l.rd?' · retour droit '+l.rd+' cm':''} (${fmt(mlOf(o),2)} ml)`,'1'],['Accoudoirs','2'],['Table Ø '+tableOf(o),'1'],['Guéridons 50','2'],...(o.vitres?[['Vitres de protection (table + 2 guéridons)','3']]:[])];
   for(const [lab,q] of rows){const ls=d.splitTextToSize(cl(lab),150);T(ls,M+2,y);T(q,W-M-2,y,{a:'right'});y+=5*ls.length+2;d.line(M,y-3.5,W-M,y-3.5);}
   y+=1;if(L.ctrl){T('Colis contrôlés au départ : '+L.ctrl.colis,M+2,y,{s:9,c:GR});y+=5;}y+=5;
   H('PAIEMENT');const P=(o.pays||[]).filter(p=>p.liv);for(const p of P){T(`Solde reçu à la livraison : ${dh(p.montant)} (${p.mode.toLowerCase()})`,M,y);y+=5;}
