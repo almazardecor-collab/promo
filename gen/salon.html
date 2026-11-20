@@ -837,7 +837,7 @@ function build0b(P){
       // fond : tenons sur les rives dans les joues, le dos (et la face avant)
       pT('FD','Fond',fR(Lin,LvF,{l:T_(tFl,e),r:T_(tFl,e),b:T_(tWl,e),t:fp?T_(tWl,e):[]}),pw(e,e,0),A,Vv,Z3);
       if(!fp){// tiroir : glissières Tandem sous caisson (jeu 5 mm par côté), façade encastrée jeu 3 mm
-          const Wi=Wd-2*e,Hi=H-2*e,Di=Da-e;const jT=5,jF=3,Ws=Wi-2*jT,NL=Math.min(600,Math.floor((Di-e-3)/50)*50),Dd=NL,hd=Hi-3-15;
+          const Wi=Wd-2*e,Hi=H-2*e,Di=Da-e;const jT=5,jF=3,Ws=Wi-2*jT,NL=Math.min(500,Math.floor((Di-e-3)/50)*50),Dd=NL,hd=Hi-3-15;
           if(NL<250||Ws<2*e+60||hd<60)W.push(`Accoudoir ${sd} : box trop petit pour un tiroir Tandem (NL mini 250, largeur ou hauteur).`);
           else{pc('TF','Façade de tiroir encastrée',Wi-2*jF,Hi-2*jF,pw(e+jF,Da-e,e+jF),A,Z3,Vv,[],0);
             // Tandem : côtés sortants de 13 mm sous le fond (logement des glissières) ; fond dans la rainure des côtés ; devant et dos posés sur le fond

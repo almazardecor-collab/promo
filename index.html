@@ -13407,7 +13407,7 @@ function achats(O,lot){const st=S.settings,n=O.length,L=(+(lot&&lot.barre)||+st.
    <tr><td><b>Bois massif</b></td><td>Barres 8 × 4 de ${fmt(L)} cm : <b>${nb} barres</b><br><span class="muted">${fmt(mf,1)} m de faces</span></td></tr>
    <tr><td><b>Placage</b></td><td>Noyer : <b>${fmt(noy,1)} m²</b><br>Chêne : <b>${fmt(che,1)} m²</b><br><span class="muted">chutes de ${fmt(+st.plCh||0)} % comprises${n120?' · '+n120+' table'+(n120>1?'s':'')+' Ø 120':''}${AX.length?' · '+AX.length+' accoudoir'+(AX.length>1?'s':'')+' tablette ou tiroir':''}</span></td></tr>
    <tr><td><b>Colles et Sintofer</b></td><td>${kg(st.colleKg,'Colle de placage')}<br>${kg(st.blancheKg,'Colle blanche à bois')}<br>${kg(st.sintoKg,'Sintofer de rebouchage')}</td></tr>
-   <tr><td><b>Quincaillerie</b></td><td>${nTir?`Coulisses Tandem sous caisson NL 600 (accoudoirs à tiroir) : <b>${nTir} paire${nTir>1?'s':''}</b><br>`:''}Vérins M8 : <b>${Q.ver}</b><br>Inserts M8 : <b>${Q.ver+QTAB.insM8*n}</b> <span class="muted">(vérins + plateaux)</span><br>Vis M8 des plateaux : <b>${QTAB.visM8*n}</b><br>Inserts M6 + vis M6 × 30 : <b>${Q.m6}</b><br>Vis à bois 4 × 30 : <b>${Q.v30}</b><br>Vis à bois 4 × 40 : <b>${Q.v40}</b><br>Patins feutre des caisses : <b>${Q.feu}</b><br>Patins de table et guéridons : <b>${pt}</b></td></tr></tbody></table>
+   <tr><td><b>Quincaillerie</b></td><td>${nTir?`Coulisses Tandem sous caisson NL 500 (accoudoirs à tiroir) : <b>${nTir} paire${nTir>1?'s':''}</b><br>`:''}Vérins M8 : <b>${Q.ver}</b><br>Inserts M8 : <b>${Q.ver+QTAB.insM8*n}</b> <span class="muted">(vérins + plateaux)</span><br>Vis M8 des plateaux : <b>${QTAB.visM8*n}</b><br>Inserts M6 + vis M6 × 30 : <b>${Q.m6}</b><br>Vis à bois 4 × 30 : <b>${Q.v30}</b><br>Vis à bois 4 × 40 : <b>${Q.v40}</b><br>Patins feutre des caisses : <b>${Q.feu}</b><br>Patins de table et guéridons : <b>${pt}</b></td></tr></tbody></table>
    <p class="muted" style="font-size:.85rem;margin:6px 0 0">Une ligne par déplacement. Plaques CP 15 : ${ONLINE?'nombre du calepinage de chaque salon (7 tant qu’il n’est pas calculé)':'base du prototype de 10,2 ml'}.${lg&&ne?' '+lg+' salon(s) de plus de 10,2 ml : attendre le calepinage pour commander.':''} Placage : surfaces du modèle (accoudoirs sur les 2 joues, dessus et chants des plateaux, dessous non compté). Quincaillerie : quantités du modèle selon la forme du salon (U, L ou droit). Emballage pas encore compté.</p>`;}
 
 /* ---------- production (gérant) ---------- */
@@ -13676,7 +13676,7 @@ const CP3STD=[{"n":1,"prog":"CP3","SL":3000,"SW":1220,"used":2450,"np":27,"nh":0
 const Fab=(()=>{
   const ATT_S=300,ATT_W=6,   // attaches « petites pièces » : moins de 300 cm² (réglable) ou moins de 6 cm de large
   attS=()=>{const a=+S.settings.att;return a>=50?a:ATT_S;},
-  GENV='19p3',GENF='19p7',CALV=1,CALB=480000,CFG0={pCo:1,sty:0,P:750,em:300,ang:1,c:300,eS:15,SL:2440,SW:1220,fm:2,F:120,hP:40,endG:1,endD:1,accG:1,accD:1,acT:2,acSame:1,acH:382.5,tPl:20,hPl:90};
+  GENV='19p3',GENF='19p8',CALV=1,CALB=480000,CFG0={pCo:1,sty:0,P:750,em:300,ang:1,c:300,eS:15,SL:2440,SW:1220,fm:2,F:120,hP:40,endG:1,endD:1,accG:1,accD:1,acT:2,acSame:1,acH:382.5,tPl:20,hPl:90};
   const TABLE={pl:1100,ep:30,rb:325,rs:206.5,rh0:176.5,rh1:120,hb:420,h:620,ds:610,hs:15,lis:60},GUER={pl:500,ep:30,rb:170,rs:110,rh0:90,rh1:60,hb:360,h:540,ds:300,hs:15,lis:50};
   let fr=null,ready=null,busy=false;
   function load(){if(ready)return ready;
@@ -13726,11 +13726,11 @@ const Fab=(()=>{
   function dossier(o){const f=o.prod&&o.prod.fab;if(!f)return null;const l=lotOf(o),lg=lgOf(o),q={};POSTES.forEach(p=>{q[p.k]=opsDe(p.k).join(' · ');});
     return {...f,code:court(o),nom:o.client.nom+' · '+o.code,forme:o.forme,lg:{fond:+lg.fond||0,rg:+lg.rg||0,rd:+lg.rd||0},SL:2440,SW:1220,barres:{L:((l&&l.barre)||S.settings.barre||250)*10},plaques:(planGet(o)||{}).pl||[],cal:calInfo(o),cp3:CP3STD,table:f.tb===120?{...TABLE,pl:1200}:TABLE,guer:GUER,qui:q};}
   // les cotes ont-elles changé depuis le calcul ?
-  const perime=o=>{const f=o.prod&&o.prod.fab,lg=lgOf(o);return !!f&&((f.gen!==GENV&&!done(o,'cnc'))||!f.lgc||f.lgc.fond!==(+lg.fond||0)||f.lgc.rg!==(+lg.rg||0)||f.lgc.rd!==(+lg.rd||0)||(f.tb||110)!==tableOf(o)||acKey(f.ac)!==acKey(accOf(o)));};
+  const perime=o=>{const f=o.prod&&o.prod.fab,lg=lgOf(o);return !!f&&((f.gen!==GENV&&!done(o,'cnc'))||!f.lgc||f.lgc.fond!==(+lg.fond||0)||f.lgc.rg!==(+lg.rg||0)||f.lgc.rd!==(+lg.rd||0)||(f.tb||110)!==tableOf(o)||acKey(f.ac)!==acKey(accOf(o))||(/r/.test(acKey(f.ac))&&f.cl!==500));};   // tiroir : fiches faites avant le passage aux coulisses de 50 cm = à refaire
   // prépare les fiches d'une liste de salons, l'un après l'autre
   async function prepare(ids,onStep){if(busy)return {ok:0,ko:[['','calcul déjà en cours']]};busy=true;let ok=0;const ko=[];
     try{for(const id of ids){const o=S.orders.find(x=>x.id===id);if(!o)continue;if(onStep)onStep(o);
-        try{const old=o.prod&&o.prod.fab,tb=tableOf(o),ac=accOf(o),f=await make(o);f.tb=tb;f.ac=ac;if(old&&old.cal&&old.gen===GENV&&(old.tb||110)===tb&&acKey(old.ac)===acKey(ac)&&old.lgc&&['fond','rg','rd'].every(k=>old.lgc[k]===f.lgc[k]))f.cal=old.cal;prodOf(o).fab=f;ok++;Store.save();}catch(e){ko.push([court(o),e.message||String(e)]);if(/introuvable|délai/.test(e.message||''))break;}}}
+        try{const old=o.prod&&o.prod.fab,tb=tableOf(o),ac=accOf(o),f=await make(o);f.tb=tb;f.ac=ac;if(/r/.test(acKey(ac)))f.cl=500;if(old&&old.cal&&old.gen===GENV&&(old.cl||0)===(f.cl||0)&&(old.tb||110)===tb&&acKey(old.ac)===acKey(ac)&&old.lgc&&['fond','rg','rd'].every(k=>old.lgc[k]===f.lgc[k]))f.cal=old.cal;prodOf(o).fab=f;ok++;Store.save();}catch(e){ko.push([court(o),e.message||String(e)]);if(/introuvable|délai/.test(e.message||''))break;}}}
     finally{busy=false;}
     return {ok,ko};}
   /* ----- calepinage CP 15 : plan rapide tout de suite, puis recherche d'une plaque de moins en arrière-plan (un salon à la fois) ----- */
