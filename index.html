@@ -13604,8 +13604,10 @@ function sousPdf(o,kind){const f=o.prod&&o.prod.fab;if(!f||!f.mats||!f.mats.leng
   T('PLAN VU DE DESSUS (cm)',M,62,{b:1,s:9,c:AC});
   f.mats.forEach(m=>poly(m.p,tp?[238,241,239]:[243,227,196]));if(tp)(f.cush||[]).forEach(p=>poly(p,[150,180,205]));
   (f.acc||[]).forEach(a=>{d.setFillColor(29,37,35);d.rect(X(Math.min(a.x0,a.x1)),Y(Math.min(a.y0,a.y1)),Math.abs(a.x1-a.x0)*k,Math.abs(a.y1-a.y0)*k,'F');});
+  (f.dos||[]).forEach(a=>{d.setFillColor(232,89,12);d.rect(X(Math.min(a.x0,a.x1))-0.3,Y(Math.min(a.y0,a.y1))-0.3,Math.abs(a.x1-a.x0)*k+0.6,Math.abs(a.y1-a.y0)*k+0.6,'F');});   // dossier : en orange, comme sur tous les schémas
+  if((f.dos||[]).length){d.setFillColor(232,89,12);d.rect(W-M-62,59.4,3,3,'F');T('Dossier (hauteur '+DOSH+' cm)',W-M-57,62,{b:1,s:9,c:[232,89,12]});}
   d.setDrawColor(29,37,35);d.setLineWidth(0.7);d.line(X(0),Y(0),X(f.W),Y(0));if(lg.rg)d.line(X(0),Y(0),X(0),Y(f.H));if(lg.rd)d.line(X(f.W),Y(0),X(f.W),Y(f.H));
-  T('Fond '+fmt(lg.fond||0),X(f.W/2),oy-2.5,{b:1,s:11,a:'center'});
+  T('Fond '+fmt(lg.fond||0),X(f.W/2),oy-2.5-((f.dos||[]).some(a=>Math.min(a.y0,a.y1)<0)?3:0),{b:1,s:11,a:'center'});
   f.mats.forEach(m=>{const cx=m.p.reduce((s,q)=>s+q[0],0)/m.p.length,cy=m.p.reduce((s,q)=>s+q[1],0)/m.p.length;if(m.pan){T(m.id,X(cx),Y(cy)+2,{b:1,s:12,a:'center',c:GR});FP.edgeIn(m.p,[5.2/k,3.4/k]).forEach(q=>T(c1(q.l),X(q.x),Y(q.y)+1.3,{b:1,s:tp?8:9.5,a:'center'}));}   // matelas d'angle : chaque cote contre son côté, face inclinée comprise
     else{T(m.id,X(cx),Y(cy)-0.5,{b:1,s:12,a:'center'});T(c1(m.w)+' × '+c1(m.l),X(cx),Y(cy)+4,{s:tp?8:10,b:!tp,a:'center'});}});
   /* listes */
@@ -13628,14 +13630,14 @@ function fichePdf(L,name){const {jsPDF}=window.jspdf,d=new jsPDF({unit:'mm',form
     /* croquis vu de dessus, mur du fond en haut */
     T('SALON - VUE DE DESSUS (cm)',M,124,{b:1,s:9,c:AC});const F=+lg.fond||0,G=+lg.rg||0,D=+lg.rd||0,P=75,bx=M+12,by=132,bw=96,bh=52,k=Math.min(bw/Math.max(F,1),bh/Math.max(G,D,P)),ox=bx+(bw-F*k)/2;
     d.setFillColor(214,226,236);d.rect(ox,by,F*k,P*k,'F');if(G>0)d.rect(ox,by,P*k,G*k,'F');if(D>0)d.rect(ox+F*k-P*k,by,P*k,D*k,'F');
-    d.setDrawColor(29,37,35);d.setLineWidth(0.6);d.line(ox,by,ox+F*k,by);if(G>0)d.line(ox,by,ox,by+G*k);if(D>0)d.line(ox+F*k,by,ox+F*k,by+D*k);{const ds=dosOf(o);d.setDrawColor(107,74,50);d.setLineWidth(1.8);if(ds.f)d.line(ox,by+0.9,ox+F*k,by+0.9);if(ds.g&&G>0)d.line(ox+0.9,by,ox+0.9,by+G*k);if(ds.d&&D>0)d.line(ox+F*k-0.9,by,ox+F*k-0.9,by+D*k);}d.setLineWidth(0.3);d.setDrawColor(207,214,211);
+    d.setDrawColor(29,37,35);d.setLineWidth(0.6);d.line(ox,by,ox+F*k,by);if(G>0)d.line(ox,by,ox,by+G*k);if(D>0)d.line(ox+F*k,by,ox+F*k,by+D*k);{const ds=dosOf(o);d.setDrawColor(232,89,12);d.setLineWidth(2.2);if(ds.f)d.line(ox,by+0.9,ox+F*k,by+0.9);if(ds.g&&G>0)d.line(ox+0.9,by,ox+0.9,by+G*k);if(ds.d&&D>0)d.line(ox+F*k-0.9,by,ox+F*k-0.9,by+D*k);}d.setLineWidth(0.3);d.setDrawColor(207,214,211);
     T('Fond '+fmt(F),ox+F*k/2,by-2.5,{b:1,s:13,a:'center'});const V=(t,x,yc)=>{d.setFont('helvetica','bold');d.setFontSize(13);T(t,x,yc+d.getTextWidth(cl(t))/2,{b:1,s:13,r:90});};if(G>0)V('Gauche '+fmt(G),ox-3,by+G*k/2);if(D>0)V('Droit '+fmt(D),ox+F*k+7.5,by+D*k/2);
     const tx=M+128;T('Forme '+o.forme,tx,134,{b:1,s:13});T('Métrage : '+fmt(mlOf(o),2)+' ml',tx,141,{s:10});
-    ['Profondeur 75','Face 12 (bande 4 + bombé 8)',accTxt(o).replace(/^a/,'A')+(/hauteur/.test(accTxt(o))?'':' · h 50'),'Angle incliné 30','Table '+tableOf(o)+' + '+(2+gueOf(o))+' guéridons 50',...(dosNom(o)?['Dossier '+DOSH+' : '+(dosSides(o)===3?'fond + 2 retours':dosNom(o).replace(/retour /g,''))]:[])].forEach((t,j)=>T(t,tx,149+j*5.5,{s:9,c:GR}));
+    ['Profondeur 75','Face 12 (bande 4 + bombé 8)',accTxt(o).replace(/^a/,'A')+(/hauteur/.test(accTxt(o))?'':' · h 50'),'Angle incliné 30','Table '+tableOf(o)+' + '+(2+gueOf(o))+' guéridons 50',...(dosNom(o)?['Dossier '+DOSH+' : '+(dosSides(o)===3?'fond + 2 retours':dosNom(o).replace(/retour /g,''))]:[])].forEach((t,j)=>{const ds=/^Dossier /.test(t);if(ds){d.setFillColor(232,89,12);d.rect(tx,149+j*5.5-2.6,3,3,'F');}T(t,tx+(ds?4.5:0),149+j*5.5,{s:9,b:ds,c:ds?[232,89,12]:GR});});
     const nt=(o.releve&&o.releve.notes)||o.notes;if(nt){const ls=d.splitTextToSize(cl('Remarques : '+nt),W-2*M);d.setFont('helvetica','normal');d.setFontSize(10);d.setTextColor(29,37,35);d.text(ls.slice(0,2),M,192);}
     /* étapes */
     y=204;d.setFillColor(227,238,246);d.rect(M,y-5,W-2*M,7,'F');T('ÉTAPE',M+10,y,{b:1,s:8});T('QUI',M+82,y,{b:1,s:8});T('FAIT',W-M-40,y,{b:1,s:8,a:'center'});T('DATE',W-M-14,y,{b:1,s:8,a:'center'});y+=9;
-    stepsOf(o).forEach((s,j)=>{T(String(j+1),M+3,y,{b:1,s:11});T(s.lab,M+10,y,{b:1,s:11});T(s.g?(s.k==='mat'?'Fournisseur de matelas':s.k==='tap'?'Tapissier':s.k==='vern'?'Vernisseur':'Contrôle')+' - validé par le vendeur':(opsDe(s.k).join(' / ')||'-'),M+82,y,{s:9,c:GR});d.setDrawColor(29,37,35);d.rect(W-M-43,y-4.5,6,6);d.setDrawColor(207,214,211);d.line(W-M-28,y+1,W-M-2,y+1);d.line(M,y+3.5,W-M,y+3.5);y+=Math.min(9.5,68/stepsOf(o).length);});
+    stepsOf(o).forEach((s,j)=>{T(String(j+1),M+3,y,{b:1,s:11});T(s.lab,M+10,y,{b:1,s:11});T(s.g?(s.k==='mat'?'Fournisseur · suivi vendeur':s.k==='tap'?'Tapissier · suivi vendeur':s.k==='vern'?'Vernisseur · suivi vendeur':'Vendeur, puis accord du gérant'):(opsDe(s.k).join(' / ')||'-'),M+82,y,{s:9,c:GR});d.setDrawColor(29,37,35);d.rect(W-M-43,y-4.5,6,6);d.setDrawColor(207,214,211);d.line(W-M-28,y+1,W-M-2,y+1);d.line(M,y+3.5,W-M,y+3.5);y+=Math.min(9.5,68/stepsOf(o).length);});
     T('Si le QR ne passe pas : taper le code '+court(o)+' dans l’app.',M,284,{s:10,b:1});T(cl(st.marque)+' · '+fdate(new Date()),W-M,284,{s:8,a:'right',c:GR});});
   return {blob:d.output('blob'),name};}
 
@@ -13643,15 +13645,15 @@ function fichePdf(L,name){const {jsPDF}=window.jspdf,d=new jsPDF({unit:'mm',form
 const FP=(()=>{
 const cm=(mm,d=1)=>(mm/10).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:d});
 const e=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const INK='#1d2523',AC='#1f5f8b',LINE='#cfd6d3',MUT='#5d6966',NOY='#6b4a32',CHE='#dcbb80';
+const INK='#1d2523',AC='#1f5f8b',LINE='#cfd6d3',MUT='#5d6966',NOY='#6b4a32',CHE='#dcbb80',DOSC='#e8590c';   // DOSC : couleur du dossier sur tous les schémas
 const legT=`<div class="leg"><i style="background:${NOY}"></i>Noyer<i style="background:${CHE}"></i>Chêne</div>`;
 const txt=(t,x,y,o={})=>`<text x="${x}" y="${y}" font-size="${o.s||130}" font-weight="${o.b?700:500}" fill="${o.c||INK}" text-anchor="${o.a||'middle'}" ${o.mono?'font-family="JetBrains Mono,monospace"':''} ${o.r?`transform="rotate(${o.r} ${x} ${y})"`:''} dominant-baseline="${o.bl||'central'}">${e(t)}</text>`;
 function plan(D,inner,label){const p=430,g=D.lg;
   return `<svg viewBox="${-p} ${-p} ${D.W+2*p} ${D.H+p+180}" class="plan" role="img" aria-label="${e(label)}">
    <path d="M0 ${g.rg?D.H:0} L0 0 L${D.W} 0 L${D.W} ${g.rd?D.H:0}" fill="none" stroke="${INK}" stroke-width="36" stroke-linejoin="miter"/>
-   ${txt('Fond '+g.fond,D.W/2,-230,{s:170,b:1})}${g.rg?txt('Gauche '+g.rg,-230,D.H/2,{s:170,b:1,r:-90}):''}${g.rd?txt('Droit '+g.rd,D.W+230,D.H/2,{s:170,b:1,r:90}):''}${inner}</svg>`;}
+   ${txt('Fond '+g.fond,D.W/2,-230,{s:170,b:1})}${g.rg?txt('Gauche '+g.rg,-230,D.H/2,{s:170,b:1,r:-90}):''}${g.rd?txt('Droit '+g.rd,D.W+230,D.H/2,{s:170,b:1,r:90}):''}${inner}</svg>${(D.dos||[]).length?`<div class="leg"><i style="background:${DOSC}"></i>Dossier (${[...new Set(D.dos.map(d=>d.nm))].join(', ')})</div>`:''}`;}
 const rects=(D,fill,stroke)=>D.banq.map(b=>`<rect x="${b.x0}" y="${b.y0}" width="${b.x1-b.x0}" height="${b.y1-b.y0}" fill="${fill}" stroke="${stroke}" stroke-width="10"/>`).join('')+D.ang.map(a=>`<polygon points="${a.p.map(q=>q.join(',')).join(' ')}" fill="${fill}" stroke="${stroke}" stroke-width="10"/>`).join('');
-const dosS=D=>(D.dos||[]).map(d=>`<rect x="${Math.min(d.x0,d.x1)}" y="${Math.min(d.y0,d.y1)}" width="${Math.abs(d.x1-d.x0)}" height="${Math.abs(d.y1-d.y0)}" fill="${NOY}" stroke="${INK}" stroke-width="6"/>`).join('');
+const dosS=D=>(D.dos||[]).map(d=>`<rect x="${Math.min(d.x0,d.x1)}" y="${Math.min(d.y0,d.y1)}" width="${Math.abs(d.x1-d.x0)}" height="${Math.abs(d.y1-d.y0)}" fill="${DOSC}" stroke="${DOSC}" stroke-width="26"/>`).join('');
 const accs=D=>D.acc.map(a=>`<rect x="${a.x0}" y="${a.y0}" width="${a.x1-a.x0}" height="${a.y1-a.y0}" fill="${INK}"/>`).join('')+dosS(D);
 /* dossiers : un croquis par côté (modules de même longueur regroupés) ; guéridons : 2 compris + ceux en plus */
 const dosGr=D=>{const G=[];(D.dos||[]).forEach(d=>{const g=G.find(x=>x[0].nm===d.nm&&x[0].l===d.l);if(g)g[2]++;else G.push([d,'Dossier '+d.nm,1]);});return G;};
@@ -13698,7 +13700,7 @@ function carc(D){const inner=carcIn(D);
     ${D.ang.length?`<tr><td><b>${D.ang.map(a=>a.id).join(', ')}</b></td><td colspan="4">angle incliné : 2 joues, 1 traverse, 1 avant, 1 dessus</td></tr>`:''}</tbody></table>
    <p class="fnote">Chaque caisse : 1 paroi arrière + 1 paroi avant. Entre deux caisses : 1 éclisse EC.</p>`+
    dosGr(D).map(([d,ti,n])=>`<div class="pl"><div class="plh"><span class="prog">${ti}</span><span class="muted">${n} module${n>1?'s':''}</span></div><svg viewBox="-200 -40 ${d.l+520} ${d.h+260}" role="img" aria-label="${ti} : ${n} module${n>1?'s':''} de ${cm(d.l)} cm de long, ${cm(d.h,0)} cm de haut, ${cm(d.e,0)} cm d’épaisseur">
-    <rect x="0" y="120" width="${d.l}" height="${d.h}" fill="#e8dccb" stroke="${INK}" stroke-width="8"/>${[...Array(Math.max(0,(d.nr||2)-2))].map((_,i)=>{const x=Math.round(d.l*(i+1)/((d.nr||2)-1));return `<line x1="${x}" y1="120" x2="${x}" y2="${120+d.h}" stroke="${MUT}" stroke-width="5" stroke-dasharray="24 18"/>`;}).join('')}<line x1="-120" y1="${120+d.h}" x2="${d.l+300}" y2="${120+d.h}" stroke="${INK}" stroke-width="10"/>
+    <rect x="0" y="120" width="${d.l}" height="${d.h}" fill="#fbe3d3" stroke="${DOSC}" stroke-width="12"/>${[...Array(Math.max(0,(d.nr||2)-2))].map((_,i)=>{const x=Math.round(d.l*(i+1)/((d.nr||2)-1));return `<line x1="${x}" y1="120" x2="${x}" y2="${120+d.h}" stroke="${MUT}" stroke-width="5" stroke-dasharray="24 18"/>`;}).join('')}<line x1="-120" y1="${120+d.h}" x2="${d.l+300}" y2="${120+d.h}" stroke="${INK}" stroke-width="10"/>
     ${txt(cm(d.l),d.l/2,60,{s:80,b:1})}<line x1="${d.l+110}" y1="120" x2="${d.l+110}" y2="${120+d.h}" stroke="${INK}" stroke-width="6"/>${txt(cm(d.h,0),d.l+220,120+d.h/2,{s:80,b:1})}${txt('épaisseur '+cm(d.e,0),d.l/2,120+d.h/2,{s:64})}${txt('sol',-60,120+d.h+60,{s:50,c:MUT})}</svg></div>`).join('')+
    (dosGr(D).length?'<p class="fnote">Dossier : nervures + lisses CP 15, 2 peaux CP 3. Posé contre le mur, fixé sous le dessus des caisses.</p>':'');}
 
