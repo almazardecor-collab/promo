@@ -15,8 +15,10 @@ function ringSplit(o,h,n){const b=bbox(o),cx=(b.x0+b.x1)/2,cy=(b.y0+b.y1)/2,ro=M
 /* table Ø 120 (au choix du client) : même fût ; plateau PL-C1 et couronne PL-C2 agrandis de 50 mm au rayon, perçages à la même place par rapport au centre */
 const T120=q=>{if(q.rep!=='PL-C1'&&q.rep!=='PL-C2')return q;const R=600,sc=(C,k)=>C.map(v=>[+((v[0]-550)*k+R).toFixed(2),+((v[1]-550)*k+R).toFixed(2)]);
   return q.rep==='PL-C1'?{...q,c:[sc(q.c[0],R/550)],pr:(q.pr||[]).map(v=>[v[0]+50,v[1]+50,...v.slice(2)])}:{...q,c:[sc(q.c[0],R/550),sc(q.c[1],(R-50)/500)]};};
-function tabParts(){const L=[];
-  for(const [u,src,nm] of [['T',P&&P.tb===120?DT.T.map(T120):DT.T,'Table'],['G1',DT.G,'Guéridon 1'],['G2',DT.G,'Guéridon 2']])for(const q of src){const base={ref:'TAB',cat:'acc',mat:'SOM',t:15,unit:u,tab:1};
+/* guéridons en plus (option, 0 à 4) : mêmes pièces que les guéridons 1 et 2 */
+const nGx=()=>Math.min(4,Math.max(0,Math.round(+(P&&P.ng)||0)));
+function tabParts(){const L=[],U=[['T',P&&P.tb===120?DT.T.map(T120):DT.T,'Table'],['G1',DT.G,'Guéridon 1'],['G2',DT.G,'Guéridon 2']];for(let k=0;k<nGx();k++)U.push(['G'+(3+k),DT.G,'Guéridon '+(3+k)]);
+  for(const [u,src,nm] of U)for(const q of src){const base={ref:'TAB',cat:'acc',mat:'SOM',t:15,unit:u,tab:1};
     if(u==='T'&&q.rep==='PL-C2'){ringSplit(q.c[0],q.c[1],NSEG).forEach((o,k)=>L.push({...base,id:`T-PL-C2-${k+1}`,name:`${nm} — PL-C2 (segment ${k+1}/${NSEG})`,out:orient(o,true),holes:[]}));continue;}
     const pkL=(q.pr||[]).map(v=>({lay:v[3]?`PERCAGE_D${v[2]}_P${v[3]}`:`PERCAGE_TRAVERSANT_D${v[2]}`,pts:circ(v[0],v[1],v[2]/2)}));
     L.push({...base,id:`${u}-${q.rep}`,name:`${nm} — ${q.rep}`,out:orient(q.c[0],true),holes:q.c.slice(1).map(h=>orient(h,false)),...(pkL.length?{pkL}:{})});}
@@ -196,6 +198,29 @@ function checkCnc(name,sh,r){const bad=r.obad.map(e=>name+' : '+e),rd=readCnc(r.
 function cp3Sheet(){const s=DT.CP3,sh={SL:s.SL,SW:s.SW,mg:s.mg,items:[],chutes:[],stock:null};
   for(const q of s.items){const p={id:q.id,ref:'TAB',name:q.nm||q.id,mat:'PEAU',t:3,out:orient(q.o,true),holes:(q.hs||[]).map(h=>orient(h,false)),unit:q.u,tab:1},bb=bbox(p.out);sh.items.push({p,bb,w:bb.w,h:bb.h,x:bb.x0,y:bb.y0,rot:false,r2:false});}return sh;}
 
+/* plaques CP 3 en plus (même format que la plaque des tables) : peaux des dossiers (pièces PEAU du générateur, libres de tourner) et peaux des guéridons
+   en plus (copie de celles du guéridon 1, gardées dans le sens Y pour rester cintrables) ; 25 mm entre les pièces, placement toujours identique */
+function cp3Extra(){const s=DT.CP3,G=25,mg=s.mg,IT=[];
+  for(const p of R.parts)if(p.mat==='PEAU'&&!p.only3d&&p.out){const bb=bbox(p.out);IT.push({p,bb,w:bb.w,h:bb.h,free:1});}
+  const g1=s.items.filter(q=>q.u==='G1');for(let k=0;k<nGx();k++)for(const q of g1){const u='G'+(3+k),p={id:q.id.replace(/^G1/,u),ref:'TAB',name:q.nm||q.id,mat:'PEAU',t:3,out:orient(q.o,true),holes:(q.hs||[]).map(h=>orient(h,false)),unit:u,tab:1},bb=bbox(p.out);IT.push({p,bb,w:bb.w,h:bb.h,free:0});}
+  if(!IT.length)return [];
+  const W=s.SL-2*mg,H=s.SW-2*mg,sheets=[],mk=()=>{const sh={SL:s.SL,SW:s.SW,mg,items:[],chutes:[],stock:null,fr:[{x:0,y:0,w:W+G,h:H+G}]};sheets.push(sh);return sh;};
+  for(const it of IT)if(Math.min(it.w,it.h)>H||Math.max(it.w,it.h)>W||(!it.free&&(it.w>W||it.h>H)))throw new Error('peau '+it.p.id+' plus grande que la plaque CP 3');
+  IT.sort((a,b)=>Math.max(b.w,b.h)-Math.max(a.w,a.h)||b.w*b.h-a.w*a.h||(a.p.id<b.p.id?-1:1));
+  const put=(sh,it)=>{let best=null;for(const [ri,r] of sh.fr.entries())for(const rot of (it.free?[false,true]:[false])){const w=(rot?it.h:it.w)+G,h=(rot?it.w:it.h)+G;if(w>r.w+1e-6||h>r.h+1e-6)continue;const sc=Math.min(r.w-w,r.h-h);if(!best||sc<best.sc-1e-9||(Math.abs(sc-best.sc)<1e-9&&(r.x<best.r.x||(r.x===best.r.x&&r.y<best.r.y))))best={sc,ri,r,rot,w,h};}
+    if(!best)return false;const {r,ri,rot,w,h}=best;sh.fr.splice(ri,1);
+    // coupe guillotine : le reste le long de la plaque reste entier
+    if(r.w-w>1)sh.fr.push({x:r.x+w,y:r.y,w:r.w-w,h:r.h});if(r.h-h>1)sh.fr.push({x:r.x,y:r.y+h,w,h:r.h-h});
+    sh.items.push({p:it.p,bb:it.bb,w:it.w,h:it.h,x:mg+r.x,y:mg+r.y,rot,r2:false});return true;};
+  for(const it of IT){let ok=false;for(const sh of sheets)if(put(sh,it)){ok=true;break;}if(!ok&&!put(mk(),it))throw new Error('peau '+it.p.id+' impossible à placer');}
+  // contrôle : dans la plaque, 25 mm mini entre les pièces
+  sheets.forEach((sh,k)=>{const B=sh.items.map(i=>bbox(toSheet(i,i.p.out)));B.forEach((b,i)=>{if(b.x0<mg-0.01||b.y0<mg-0.01||b.x1>s.SL-mg+0.01||b.y1>s.SW-mg+0.01)throw new Error('plaque CP 3 n° '+(k+2)+' : '+sh.items[i].p.id+' sort de la plaque');
+      for(let j=0;j<i;j++){const c=B[j];if(b.x0<c.x1+G-0.01&&c.x0<b.x1+G-0.01&&b.y0<c.y1+G-0.01&&c.y0<b.y1+G-0.01)throw new Error('plaque CP 3 n° '+(k+2)+' : moins de 25 mm entre '+sh.items[i].p.id+' et '+sh.items[j].p.id);}});delete sh.fr;});
+  return sheets;}
+const x3n=k=>'CP3-'+(k+2);
+/* plan des plaques CP 3 en plus, pour la fiche CNC */
+function planX(c){build(c);return planOf(cp3Extra()).map((p,k)=>({...p,n:k+2,prog:x3n(k)}));}
+
 /* ---------- plan des plaques pour la fiche CNC (contours simplifiés, en mm entiers) ---------- */
 function simp(Rg,tol){const n=Rg.length;if(n<8)return Rg.map(q=>[Math.round(q[0]),Math.round(q[1])]);
   let a=0,b=0,dm=-1;for(let i=1;i<n;i++){const d=Math.hypot(Rg[i][0]-Rg[0][0],Rg[i][1]-Rg[0][1]);if(d>dm){dm=d;b=i;}}
@@ -219,11 +244,12 @@ function plan(c,cal){return planOf(open(c,cal).sheets);}
 function progs(c,cal,code,att){const {L,sheets}=open(c,cal),A={on:!att||att.on!==0,L:(att&&att.L)||10,H:(att&&att.H)||2,small:(att&&att.small)||null},out=[],bad=[];
   sheets.forEach((sh,k)=>{const r=cncText(sh,PM('SOM'),'SOM',A),name=code+'-'+(k+1);bad.push(...checkCnc(name,sh,r));out.push({name,text:r.text,sh,r,mat:'SOM'});});
   const s3=cp3Sheet(),r3=cncText(s3,PM('PEAU'),'PEAU',A),n3=code+'-CP3';bad.push(...checkCnc(n3,s3,r3));out.push({name:n3,text:r3.text,sh:s3,r:r3,mat:'PEAU'});
+  cp3Extra().forEach((sx,k)=>{const rx=cncText(sx,PM('PEAU'),'PEAU',A),nx=code+'-'+x3n(k);bad.push(...checkCnc(nx,sx,rx));out.push({name:nx,text:rx.text,sh:sx,r:rx,mat:'PEAU'});});
   return {L,sheets,out,bad,att:A};}
 /* étiquettes 60 × 40 de la carcasse, dans l'ordre de sortie de chaque plaque (table et guéridons : pas d'étiquette) */
 function labels(pg,code,nom){const {jsPDF}=window.jspdf,W=60,H=40,E=[];P.cli=nom||('SALON '+code);P.refC='';
-  pg.out.filter(f=>f.mat==='SOM').forEach((f,si)=>{const its=f.r.out.filter(it=>!it.p.tab),PP={...PM('SOM'),SL:f.sh.SL,SW:f.sh.SW};if(!its.length)return;
-    E.push({hd:1,m:'SOM',si,sh:f.sh,PP,prg:f.name,prog:f.name,n:its.length});its.forEach((it,k)=>E.push({m:'SOM',si,sh:f.sh,PP,it,prg:f.name,prog:f.name,k:k+1,n:its.length}));});
+  pg.out.forEach((f,si)=>{const its=f.r.out.filter(it=>!it.p.tab),PP={...PM(f.mat),SL:f.sh.SL,SW:f.sh.SW};if(!its.length)return;
+    E.push({hd:1,m:f.mat,si,sh:f.sh,PP,prg:f.name,prog:f.name,n:its.length});its.forEach((it,k)=>E.push({m:f.mat,si,sh:f.sh,PP,it,prg:f.name,prog:f.name,k:k+1,n:its.length}));});
   let g=0;const N=E.filter(e=>!e.hd).length;for(const e of E)if(!e.hd){e.g=++g;e.N=N;}
   const doc=new jsPDF({orientation:'landscape',unit:'mm',format:[W,H]});E.forEach((e,i)=>{if(i)doc.addPage([W,H],'landscape');drawPieceLabel(doc,0,0,W,H,e);});
   return {blob:doc.output('blob'),n:N};}
@@ -231,7 +257,7 @@ function note(pg,code,nom,nEtq){const L=['PROGRAMMES CNC — salon '+code+(nom?'
   'Départ de chaque détourage du côté le plus éloigné de la dernière pièce découpée. Pièces logées dans une ouverture : coupées avant cette ouverture.',
   pg.att.on?'Attaches : '+pg.att.L+' mm (dernier passage), '+pg.att.H+' mm d’épaisseur laissée (1 mm sur le CP 3), '+(pg.att.small?'seulement sur les petites pièces (moins de '+Math.round(pg.att.small.a/100)+' cm² ou moins de '+Math.round(pg.att.small.w/10)+' cm de large).':'sur toutes les pièces.'):'Sans attaches.',
   'Étiquettes 60 × 40 : '+nEtq+' pour la carcasse, dans l’ordre de sortie de chaque plaque. Table et guéridons : pas d’étiquette, aucune gravure.',''];
-  for(const f of pg.out){const nc=f.sh.items.filter(i=>!i.p.tab).length;L.push(f.name+'.cnc  ←  '+(f.mat==='SOM'?'CP 15':'CP 3')+', '+f.sh.SW+' × '+f.sh.SL+', profondeur '+f.r.D+' — '+f.sh.items.length+' pièces'+(f.mat==='SOM'?' dont '+nc+' étiquetées':'')+(f.r.nTab?', '+f.r.nTab+' attaches sur '+f.r.nTabP+' pièces':''));
+  for(const f of pg.out){const nc=f.sh.items.filter(i=>!i.p.tab).length;L.push(f.name+'.cnc  ←  '+(f.mat==='SOM'?'CP 15':'CP 3')+', '+f.sh.SW+' × '+f.sh.SL+', profondeur '+f.r.D+' — '+f.sh.items.length+' pièces'+(nc&&(f.mat==='SOM'||nc<f.sh.items.length)?' dont '+nc+' étiquetées':nc?' étiquetées':'')+(f.r.nTab?', '+f.r.nTab+' attaches sur '+f.r.nTabP+' pièces':''));
     const k=Object.entries(f.r.skip);if(k.length)L.push('   à faire à part : '+k.map(([a,b])=>b+' × '+a).join(', '));}
   return L.join('\r\n')+'\r\n';}
 /* dossier CNC complet d'un salon : ZIP (programmes + étiquettes + note) ; refuse de sortir si le contrôle trouve une erreur */
@@ -244,5 +270,5 @@ async function filesLot(list){const zip=new JSZip(),names=[];let nEtq=0;
   for(const a of list){const pg=progs(a.c,a.cal,a.code,a.att);if(pg.bad.length)throw new Error('contrôle des programmes refusé : '+pg.bad[0]);const lb=labels(pg,a.code,a.nom);nEtq+=lb.n;
     for(const f of pg.out){zip.file(f.name+'.cnc',f.text);names.push(f.name+'.cnc');}zip.file(a.code+'-etiquettes-60x40.pdf',lb.blob);zip.file(a.code+'-LISEZMOI.txt',note(pg,a.code,a.nom,lb.n));}
   return {zip:await zip.generateAsync({type:'blob',compression:'DEFLATE'}),names,nEtq};}
-return {CALV,build,parts,sig,enc,dec,mkSheets,checkPlan,calc,stop,plan,progs,labels,files,filesLot,cp3Sheet,cncText,checkCnc,readCnc,planOf,open,tabParts};
+return {CALV,build,parts,sig,enc,dec,mkSheets,checkPlan,calc,stop,plan,planX,progs,labels,files,filesLot,cp3Sheet,cp3Extra,cncText,checkCnc,readCnc,planOf,open,tabParts};
 })();
