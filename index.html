@@ -12942,7 +12942,7 @@ const telN=t=>String(t||'').replace(/\D/g,'');
 const telWa=t=>{let s=telN(t);if(s.startsWith('00'))s=s.slice(2);if(s.startsWith('0'))s='212'+s.slice(1);return s;};
 
 /* ---------- données ---------- */
-const DEFSET={base:14900,mlBase:10,pMl:600,pVit:800,acPct:75,resH:48,quota:108,rythme:7,liv0:'2026-12-21',arr:1,tolMl:0,
+const DEFSET={base:14900,mlBase:10,pMl:600,pVit:800,pTab:400,pTir:750,acPct:75,resH:48,quota:108,rythme:7,liv0:'2026-12-21',arr:1,tolMl:0,
   barre:250,plCh:10,colleKg:4,blancheKg:1,sintoKg:0.25,patinsT:12,att:300,relJ:5,capCam:5,del:{cnc:2,carc:4,tab:4,face:5,plac:6,vern:9,emb:10},showrooms:[{id:'s1',nom:'Agadir',adresse:'272 Av. Mohammed V, Dcheira El Jihadia'},{id:'s2',nom:'Casablanca',adresse:'Bd Haïfa'}],sv:6,
   zones:[{id:'z1',nom:'Agadir, Inezgane, Aït Melloul',prix:0},{id:'z2',nom:'Région d’Agadir',prix:0},{id:'z3',nom:'Autre ville',prix:0}],
   marque:'ALMAZARDECOR',adresse:'Showroom Agadir — 272 Av. Mohammed V, Dcheira El Jihadia',tel:'06 47 36 72 72',url:''};
@@ -12972,9 +12972,16 @@ const srMe=()=>{const L=srList();return (ME&&L.find(x=>x.id===ME.sr)||L[0]).id;}
 const mlOf=o=>{const l=lgOf(o);return ((+l.fond||0)+(+l.rg||0)+(+l.rd||0))/100;};
 const extraOf=(o,st=S.settings)=>{const x=mlOf(o)-st.mlBase-(+st.tolMl||0),a=Math.max(0.1,+st.arr||1);return x>1e-9?Math.round(Math.ceil(x/a-1e-9)*a*100)/100:0;};
 const zoneOf=(o,st=S.settings)=>st.zones.find(z=>z.id===o.zoneId)||null;
+const accN=a=>{const f=x=>{const t=x&&(x.t==='t'||x.t==='r')?x.t:'m';return {t,w:t==='m'?8:t==='r'?30:Math.min(30,Math.max(12,Math.round(+x.w)||25))};};a=a||{};return {g:f(a.g),d:f(a.d)};};
+const accOf=o=>accN((o.releve&&o.releve.acc)||o.acc||(o.prod&&o.prod.fab&&o.prod.fab.ac));
+const accNom=x=>x.t==='m'?'mince':x.t==='t'?'tablette '+x.w+' cm':'à tiroir '+x.w+' cm';
+const accSup=(x,st=S.settings)=>x.t==='t'?(+st.pTab||0):x.t==='r'?(+st.pTir||0):0;
+const accTxt=o=>{const a=accOf(o);return a.g.t===a.d.t&&a.g.w===a.d.w?'2 accoudoirs '+(a.g.t==='m'?'minces':accNom(a.g)):'accoudoir gauche '+accNom(a.g)+', droit '+accNom(a.d);};
+const accKo=a=>['g','d'].some(c=>a&&a[c]&&a[c].t==='t'&&!(Number.isInteger(+a[c].w)&&+a[c].w>=12&&+a[c].w<=30))?'La largeur d’un accoudoir tablette doit être un nombre entier entre 12 et 30 cm.':'';
 const tableOf=o=>{const v=+((o.releve&&o.releve.table)||o.table||(o.prod&&o.prod.fab&&o.prod.fab.tb));return v===120?120:110;};
 const lignes=(o,st=S.settings)=>{if(o.interne)return [['Salon pour le showroom — hors vente',0]];const L=[[`Salon marocain bois seul — jusqu’à ${fmt(st.mlBase)} ml (banquettes, 2 accoudoirs, table ${tableOf(o)}, 2 guéridons)`,st.base]];
   const ex=extraOf(o,st);if(ex>0)L.push([`Mètres en plus : ${fmt(ex,ex%1?1:0)} ml × ${fmt(st.pMl)} DH`,ex*st.pMl]);
+  const A=accOf(o);[['gauche',A.g],['droit',A.d]].forEach(([c,x])=>{if(x.t!=='m')L.push(['Accoudoir '+c+' '+accNom(x),accSup(x,st)]);});
   if(o.vitres)L.push(['Vitres de protection (table + 2 guéridons)',st.pVit]);
   const z=zoneOf(o,st);if(z)L.push(['Transport — '+z.nom,+z.prix||0]);
   if(+o.remise>0)L.push(['Remise'+(o.remiseMotif?' — '+o.remiseMotif:''),-(+o.remise)]);return L;};
@@ -13056,8 +13063,8 @@ function vDash(){const st=S.settings,C=confirmees(),R=S.orders.filter(o=>statut(
    ${prodDash()}${delaisDash()}${livDash()}${srList().length>1?`<div class="card"><h2>Par showroom</h2><table><thead><tr><th>Showroom</th><th class="n">Confirmées</th><th class="n">CA</th><th class="n">Encaissé</th></tr></thead><tbody>${[...srList(),{id:'',nom:'Sans showroom'}].map(x=>{const c=C.filter(o=>(o.sr||'')===x.id&&!o.interne),e=S.orders.filter(o=>(o.sr||'')===x.id&&!o.annule&&!o.interne).reduce((s,o)=>s+payeOf(o),0);return x.id||c.length||e?`<tr><td>${esc(x.nom)}</td><td class="n">${c.length}</td><td class="n">${fmt(c.reduce((s,o)=>s+totalOf(o),0))}</td><td class="n">${fmt(e)}</td></tr>`:'';}).join('')}</tbody></table></div>`:''}<div class="card"><h2>Par vendeur</h2>${V.length?`<table><thead><tr><th>Vendeur</th><th class="n">Confirmées</th><th class="n">CA</th><th class="n">Encaissé</th></tr></thead><tbody>${V.map(u=>{const c=C.filter(o=>o.vendeurId===u.id);
      return `<tr><td>${esc(u.nom)}</td><td class="n">${c.length}</td><td class="n">${fmt(c.reduce((s,o)=>s+totalOf(o),0))}</td><td class="n">${fmt(S.orders.filter(o=>o.vendeurId===u.id&&!o.annule).reduce((s,o)=>s+payeOf(o),0))}</td></tr>`;}).join('')}</tbody></table>`:'<p class="muted">Aucune commande pour l’instant.</p>'}</div>
    <div class="row"><button class="btn" id="bCsv">Exporter les commandes (CSV)</button></div>`);
-  $('bCsv').onclick=()=>{const H=['Code','Statut','Date','Vendeur','Showroom','Canal','Client','Téléphone','Ville','Quartier','ml','ml en plus','Table','Vitres','Transport','Remise','Total','Encaissé','Reste','Rang','Livraison prévue','Jour de livraison','Livrée le'];
-    const L=S.orders.map(o=>[o.code,ST[etat(o)],fdt(o.createdAt),userOf(o.vendeurId).nom,(srOf(o)||{nom:''}).nom,o.canal,o.client.nom,o.client.tel,o.client.ville,o.client.quartier,mlOf(o),extraOf(o),tableOf(o),o.vitres?'oui':'non',(zoneOf(o)||{}).prix||0,o.remise||0,totalOf(o),payeOf(o),resteOf(o),o.confirmedAt?rangOf(o):'',o.confirmedAt?fdate(livOf(o)):'',o.liv&&o.liv.date?fdate(o.liv.date+'T12:00:00'):'',livree(o)?fdate(o.liv.fin.at):'']);
+  $('bCsv').onclick=()=>{const H=['Code','Statut','Date','Vendeur','Showroom','Canal','Client','Téléphone','Ville','Quartier','ml','ml en plus','Table','Accoudoirs','Vitres','Transport','Remise','Total','Encaissé','Reste','Rang','Livraison prévue','Jour de livraison','Livrée le'];
+    const L=S.orders.map(o=>[o.code,ST[etat(o)],fdt(o.createdAt),userOf(o.vendeurId).nom,(srOf(o)||{nom:''}).nom,o.canal,o.client.nom,o.client.tel,o.client.ville,o.client.quartier,mlOf(o),extraOf(o),tableOf(o),accTxt(o),o.vitres?'oui':'non',(zoneOf(o)||{}).prix||0,o.remise||0,totalOf(o),payeOf(o),resteOf(o),o.confirmedAt?rangOf(o):'',o.confirmedAt?fdate(livOf(o)):'',o.liv&&o.liv.date?fdate(o.liv.date+'T12:00:00'):'',livree(o)?fdate(o.liv.fin.at):'']);
     saveFile('commandes-promo-bois-'+new Date().toISOString().slice(0,10)+'.csv','﻿'+[H,...L].map(r=>r.map(c=>'"'+String(c??'').replace(/"/g,'""')+'"').join(';')).join('\r\n'),'text/csv');};}
 
 /* ---------- liste ---------- */
@@ -13076,7 +13083,7 @@ function vList(){if(isOp()||isLiv())return go(home());let mine=isG()?S.orders:S.
 
 /* ---------- nouvelle commande ---------- */
 let DRAFT=null;
-const newDraft=()=>({interne:false,canal:'Showroom',client:{nom:'',tel:'',ville:'',quartier:''},forme:'U',lg:{fond:'',rg:'',rd:''},vitres:false,zoneId:zonesOk()[0]?.id||'',remise:0,remiseMotif:'',notes:'',sr:srMe(),table:110});
+const newDraft=()=>({interne:false,canal:'Showroom',client:{nom:'',tel:'',ville:'',quartier:''},forme:'U',lg:{fond:'',rg:'',rd:''},vitres:false,zoneId:zonesOk()[0]?.id||'',remise:0,remiseMotif:'',notes:'',sr:srMe(),table:110,acc:{g:{t:'m',w:25},d:{t:'m',w:25}}});
 let FSR='tous';
 function vNew(){if(isOp()||isLiv())return go(home());const st=S.settings;if(!DRAFT)DRAFT=newDraft();const d=DRAFT;const plein=actives().length>=st.quota;
   if(plein&&!isG()){shell('Promo Salon <b>Bois</b>','Nouvelle commande',`<div class="msg err">Les ventes sont fermées : les ${st.quota} salons sont pris.</div>`);return;}
@@ -13091,6 +13098,7 @@ function vNew(){if(isOp()||isLiv())return go(home());const st=S.settings;if(!DRA
     <label class="f">Commande prise par</label>${seg('canal',['Showroom','Live','WhatsApp'],d.canal)}`}</div>
    <div class="card"><h2>Salon</h2><label class="f">Forme</label>${seg('forme',['U','L','Droit'],d.forme)}
      <label class="f">Grande table (même prix)</label><div class="seg" role="group">${[110,120].map(v=>`<button type="button" data-tb="${v}" aria-pressed="${(+d.table===120?120:110)===v}">Ø ${v} cm</button>`).join('')}</div>
+     ${[['g','gauche'],['d','droit']].map(([c,lab])=>{const x=d.acc[c];return `<label class="f">Accoudoir ${lab}</label><div class="seg" role="group">${[['m','Mince'],['t','Tablette'],['r','Tiroir']].map(([v,l])=>`<button type="button" data-ac="${c}" data-v="${v}" aria-pressed="${x.t===v}">${l}</button>`).join('')}</div>${x.t==='t'?`<div style="max-width:240px"><label class="f" for="aW${c}">Largeur de la tablette (12 à 30 cm)</label><input type="number" class="num" id="aW${c}" inputmode="numeric" min="12" max="30" value="${esc(x.w)}"></div>`:x.t==='r'?'<p class="muted" style="font-size:.85rem;margin:4px 0 0">Tiroir : largeur 30 cm.</p>':''}`;}).join('')}
     <label class="f">${I?'Cotes de fabrication, mur à mur (cm)':'Longueurs mur à mur annoncées par le client (cm)'}</label>
     <div class="g3"><div><label class="f" for="lF">Fond</label><input type="number" class="num" id="lF" inputmode="numeric" value="${esc(d.lg.fond)}"></div>
      <div><label class="f" for="lG">Retour gauche</label><input type="number" class="num" id="lG" inputmode="numeric" value="${esc(d.lg.rg)}" ${d.forme==='Droit'?'disabled':''}></div>
@@ -13104,19 +13112,19 @@ function vNew(){if(isOp()||isLiv())return go(home());const st=S.settings;if(!DRA
    ${I?'':'<div class="sum" id="bar" aria-live="polite"></div>'}
    <button class="btn pri full" id="bSave" style="margin-top:10px">${I?'Enregistrer la commande showroom':'Enregistrer la réservation'}</button>`);
   const rd=()=>{d.client.nom=$('cN').value;d.client.ville=$('cV').value;if(!I){d.client.tel=$('cT').value;d.client.quartier=$('cQ').value;d.vitres=$('oV').checked;d.zoneId=$('oZ').value;d.remise=Math.max(0,+$('oR').value||0);}
-    d.lg={fond:$('lF').value,rg:d.forme==='Droit'?'':$('lG').value,rd:d.forme==='U'?$('lD').value:''};d.notes=$('oN').value;};
+    d.lg={fond:$('lF').value,rg:d.forme==='Droit'?'':$('lG').value,rd:d.forme==='U'?$('lD').value:''};d.notes=$('oN').value;['g','d'].forEach(c=>{if($('aW'+c))d.acc[c].w=$('aW'+c).value;});};
   const sm=()=>{rd();if(I)return;const L=lignes(d),t=totalOf(d);$('sum').innerHTML=`<table><tbody>${L.map(([l,m])=>`<tr><td>${esc(l)}</td><td class="n">${fmt(m)}</td></tr>`).join('')}
     <tr class="tot"><td>Total (${fmt(mlOf(d),2)} ml)</td><td class="n">${dh(t)}</td></tr><tr><td>Acompte de ${st.acPct} % pour confirmer</td><td class="n">${dh(acDu(d))}</td></tr></tbody></table>`;
     $('bar').innerHTML=`<span>Total <b class="big">${dh(t)}</b></span><span class="muted">acompte ${dh(acDu(d))}</span>`;};
   document.querySelectorAll('.app input,.app select,.app textarea').forEach(el=>el.addEventListener('input',sm));
   document.querySelectorAll('[data-sr]').forEach(b=>b.onclick=()=>{rd();d.sr=b.dataset.sr;vNew();});
-  document.querySelectorAll('[data-seg]').forEach(b=>b.onclick=()=>{rd();if(b.dataset.seg==='type')d.interne=b.dataset.v!=='Client';else d[b.dataset.seg]=b.dataset.v;vNew();});document.querySelectorAll('[data-tb]').forEach(b=>b.onclick=()=>{rd();d.table=+b.dataset.tb;vNew();});sm();
+  document.querySelectorAll('[data-seg]').forEach(b=>b.onclick=()=>{rd();if(b.dataset.seg==='type')d.interne=b.dataset.v!=='Client';else d[b.dataset.seg]=b.dataset.v;vNew();});document.querySelectorAll('[data-tb]').forEach(b=>b.onclick=()=>{rd();d.table=+b.dataset.tb;vNew();});document.querySelectorAll('[data-ac]').forEach(b=>b.onclick=()=>{rd();d.acc[b.dataset.ac].t=b.dataset.v;vNew();});['g','d'].forEach(c=>{if($('aW'+c))$('aW'+c).addEventListener('input',sm);});sm();
   $('bSave').onclick=async()=>{rd();const GP=$('oP')?$('oP').value.trim():'';const e=$('nE'),err=t=>{e.textContent=t;e.hidden=false;e.scrollIntoView({block:'center'});};
     if(!isG()||!srOf(d))d.sr=srMe();if(I&&!d.client.nom.trim())d.client.nom=srNom(d);if(I&&!d.client.ville.trim())d.client.ville=srOf(d).nom;
     if(!d.client.nom.trim())return err(I?'Le nom du showroom est obligatoire.':'Le nom du client est obligatoire.');if(!I&&telN(d.client.tel).length<9)return err('Le téléphone WhatsApp du client est obligatoire.');
     if(!(+d.lg.fond>0))return err('Indique au moins la longueur du fond.');
-    if(cotesMin(d.forme,d.lg))return err(cotesMin(d.forme,d.lg));
-    if(I){const c=nextCode(true),now=new Date().toISOString(),o={id:uid(),...c,createdAt:now,vendeurId:ME.id,interne:true,sr:d.sr,canal:'Showroom',client:{nom:d.client.nom.trim(),tel:'',ville:d.client.ville,quartier:''},forme:d.forme,table:+d.table===120?120:110,lg:{...d.lg},vitres:false,zoneId:'',remise:0,remiseMotif:'',notes:d.notes,pays:[],releve:{...d.lg,table:+d.table===120?120:110,notes:d.notes,date:now,par:ME.id}};
+    if(cotesMin(d.forme,d.lg))return err(cotesMin(d.forme,d.lg));if(accKo(d.acc))return err(accKo(d.acc));d.acc=accN(d.acc);
+    if(I){const c=nextCode(true),now=new Date().toISOString(),o={id:uid(),...c,createdAt:now,vendeurId:ME.id,interne:true,sr:d.sr,canal:'Showroom',client:{nom:d.client.nom.trim(),tel:'',ville:d.client.ville,quartier:''},forme:d.forme,table:+d.table===120?120:110,acc:accN(d.acc),lg:{...d.lg},vitres:false,zoneId:'',remise:0,remiseMotif:'',notes:d.notes,pays:[],releve:{...d.lg,table:+d.table===120?120:110,acc:accN(d.acc),notes:d.notes,date:now,par:ME.id}};
       if(!(await addOrder(o,GP,err)))return;DRAFT=null;flash('Commande showroom '+o.code+' enregistrée. Valide-la pour la production.');return go('ord',o.id);}
     if(d.remise>0&&!ONLINE&&!S.users.some(u=>u.role==='gerant'&&u.pin===GP))return err('Remise refusée : il faut le code du gérant.');
     if(d.remise>0)d.remiseMotif='accordée par le gérant';
@@ -13133,7 +13141,7 @@ function vOrd(){if(isOp()||isLiv())return go(home());const o=S.orders.find(x=>x.
   const canPay=s!=='ann'&&!o.interne,cncFait=!!(o.prod&&o.prod.steps&&o.prod.steps.cnc),canRel=(!!o.confirmedAt||!!o.interne)&&s!=='ann'&&(s!=='val'||(isG()&&!cncFait));
   shell(`${esc(o.client.nom)}`,`${o.code} · ${tagH(livree(o)?'liv':s)}`,`${hExp}
    <div class="card"><h2>Commande</h2><p style="margin:0 0 6px">${esc(o.client.tel)} · ${esc([o.client.ville,o.client.quartier].filter(Boolean).join(', '))}<br><span class="muted">${srNom(o)?esc(srNom(o))+' · ':''}${o.canal==='Showroom'&&srNom(o)?'':esc(o.canal)+' · '}${esc(userOf(o.vendeurId).nom)} · ${fdt(o.createdAt)}</span></p>${isG()&&srList().length>1?`<div style="max-width:260px;margin:0 0 8px"><label class="f" for="oSr">Point de vente</label><select id="oSr">${srOf(o)?'':'<option value="">à choisir</option>'}${srList().map(x=>`<option value="${x.id}" ${o.sr===x.id?'selected':''}>Showroom ${esc(x.nom)}</option>`).join('')}</select></div>`:''}
-    <p style="margin:0 0 6px">Forme ${esc(o.forme)} · table Ø ${tableOf(o)} · ${o.releve?'cotes relevées':'longueurs annoncées'} : fond ${fmt(lgOf(o).fond||0)}${lgOf(o).rg?' · gauche '+fmt(lgOf(o).rg):''}${lgOf(o).rd?' · droit '+fmt(lgOf(o).rd):''} cm = <b>${fmt(mlOf(o),2)} ml</b></p>
+    <p style="margin:0 0 6px">Forme ${esc(o.forme)} · table Ø ${tableOf(o)} · ${accTxt(o)} · ${o.releve?'cotes relevées':'longueurs annoncées'} : fond ${fmt(lgOf(o).fond||0)}${lgOf(o).rg?' · gauche '+fmt(lgOf(o).rg):''}${lgOf(o).rd?' · droit '+fmt(lgOf(o).rd):''} cm = <b>${fmt(mlOf(o),2)} ml</b></p>
     <table><tbody>${L.map(([l,m])=>`<tr><td>${esc(l)}</td><td class="n">${fmt(m)}</td></tr>`).join('')}<tr class="tot"><td>Total</td><td class="n">${dh(t)}</td></tr>
      <tr><td>Encaissé</td><td class="n pos">${dh(p)}</td></tr><tr><td>Reste à payer</td><td class="n">${dh(t-p)}</td></tr></tbody></table>
     ${o.interne?'<p class="muted" style="margin:8px 0 0">Commande showroom : sans paiement, hors quota.</p>':o.confirmedAt?`<p style="margin:8px 0 0">Rang <b>${rangOf(o)}</b> · ${livree(o)?'livré le <b>'+fdate(o.liv.fin.at)+'</b>':o.liv&&o.liv.date?'livraison prévue le <b>'+jourL(o.liv.date)+'</b> (semaine promise : '+fdate(livOf(o))+')':'livraison prévue la semaine du <b>'+fdate(livOf(o))+'</b>'}</p>${acOk(o)?'':`<div class="msg err" id="acK">Le total a augmenté : il manque <b>${dh(acManque(o))}</b> pour atteindre l’acompte de ${st.acPct} %. La date de livraison n’est plus valable pour le client tant que ce complément n’est pas versé.</div>`}`:`<p class="muted" style="margin:8px 0 0">Date indicative, à ne pas promettre au client : si l’acompte de ${st.acPct} % est versé aujourd’hui, rang ${rangOf(o)}, livraison la semaine du ${fdate(livOf(o))}. La date n’est valable qu’après l’acompte.</p>`}
@@ -13142,9 +13150,11 @@ function vOrd(){if(isOp()||isLiv())return go(home());const o=S.orders.find(x=>x.
     ${canPay?`<div class="g2"><div><label class="f" for="pM">Montant reçu (DH)</label><input type="number" class="num" id="pM" inputmode="numeric" placeholder="${o.confirmedAt&&acOk(o)?Math.max(0,t-p):Math.max(0,ad-p)}"></div><div><label class="f" for="pMo">Mode</label><select id="pMo"><option>Espèces</option><option>Virement</option></select></div></div>
     <label class="f" for="pF">Photo du justificatif (virement, reçu)</label><input type="file" id="pF" accept="image/*" capture="environment">
     <p id="pE" class="msg err" hidden></p><button class="btn pri full" id="bPay" style="margin-top:10px">Enregistrer le paiement</button>`:''}</div>
-   <div class="card"><h2>Relevé des cotes chez le client</h2>${!o.releve&&o.confirmedAt&&!o.interne&&s!=='ann'?`<p class="${relTard(o)?'neg':'muted'}" style="margin:0 0 6px">${relTard(o)?'En retard : le relevé devait être fait avant le ':'À faire avant le '}${fdate(relLimite(o))}.</p>`:''}${o.releve?`<p style="margin:0 0 6px">Relevé le ${fdate(o.releve.date)} par ${esc(userOf(o.releve.par).nom)} : fond ${fmt(o.releve.fond||0)}${o.releve.rg?' · gauche '+fmt(o.releve.rg):''}${o.releve.rd?' · droit '+fmt(o.releve.rd):''} cm · table Ø ${tableOf(o)}${o.releve.notes?'<br><span class="muted">'+esc(o.releve.notes)+'</span>':''}</p>`:''}
+   <div class="card"><h2>Relevé des cotes chez le client</h2>${!o.releve&&o.confirmedAt&&!o.interne&&s!=='ann'?`<p class="${relTard(o)?'neg':'muted'}" style="margin:0 0 6px">${relTard(o)?'En retard : le relevé devait être fait avant le ':'À faire avant le '}${fdate(relLimite(o))}.</p>`:''}${o.releve?`<p style="margin:0 0 6px">Relevé le ${fdate(o.releve.date)} par ${esc(userOf(o.releve.par).nom)} : fond ${fmt(o.releve.fond||0)}${o.releve.rg?' · gauche '+fmt(o.releve.rg):''}${o.releve.rd?' · droit '+fmt(o.releve.rd):''} cm · table Ø ${tableOf(o)} · ${accTxt(o)}${o.releve.notes?'<br><span class="muted">'+esc(o.releve.notes)+'</span>':''}</p>`:''}
     ${canRel?`<div class="g3"><div><label class="f" for="rF">Fond (cm)</label><input type="number" class="num" id="rF" inputmode="numeric" value="${esc(lgOf(o).fond)}"></div><div><label class="f" for="rG">Retour gauche</label><input type="number" class="num" id="rG" inputmode="numeric" value="${esc(lgOf(o).rg)}" ${o.forme==='Droit'?'disabled':''}></div><div><label class="f" for="rD">Retour droit</label><input type="number" class="num" id="rD" inputmode="numeric" value="${esc(lgOf(o).rd)}" ${o.forme!=='U'?'disabled':''}></div></div>
     <label class="f" for="rT">Grande table : diamètre confirmé par le client</label><select id="rT"><option value="110" ${tableOf(o)===110?'selected':''}>Ø 110 cm</option><option value="120" ${tableOf(o)===120?'selected':''}>Ø 120 cm</option></select>
+       <div class="g2">${[['g','gauche'],['d','droit']].map(([c,lab])=>{const x=accOf(o)[c];return `<div><label class="f" for="rA${c}">Accoudoir ${lab}</label><select id="rA${c}">${[['m','Mince'],['t','Tablette'],['r','Tiroir 30 cm']].map(([v,l])=>`<option value="${v}" ${x.t===v?'selected':''}>${l}</option>`).join('')}</select><input type="number" class="num" id="rW${c}" inputmode="numeric" min="12" max="30" value="${x.t==='t'?x.w:25}" aria-label="Largeur de la tablette ${lab} (12 à 30 cm)" style="margin-top:6px" ${x.t==='t'?'':'hidden'}></div>`;}).join('')}</div>
+       <p class="muted" style="font-size:.85rem;margin:6px 0 0">Tablette : largeur de 12 à 30 cm, à saisir. Supplément par accoudoir : tablette ${dh(st.pTab)}, tiroir ${dh(st.pTir)}.</p>
        <label class="f" for="rN">Remarques (plinthe, prise, porte, angle…)</label><textarea id="rN" rows="2">${esc(o.releve?.notes||'')}</textarea>
     ${s==='val'?'<p class="muted" style="font-size:.85rem;margin:8px 0 0">Commande déjà validée : en corrigeant les cotes, les fiches de fabrication sont recalculées.</p>':''}<button class="btn full" id="bRel" style="margin-top:10px">${o.releve?(o.interne?'Corriger les cotes':'Corriger le relevé'):'Enregistrer le relevé'}</button>`:`<p class="muted">${o.confirmedAt||o.interne?(s==='val'?(cncFait?'La découpe CNC est validée : les cotes ne peuvent plus changer.':'Commande validée : seul le gérant peut encore corriger les cotes.'):''):'Le relevé se fait après l’acompte.'}</p>`}</div>
    <div class="card" id="cDoc"><h2>Documents pour le client</h2><div class="row"><button class="btn pri" id="bPdf">Bon de commande (PDF)</button><button class="btn" id="bWa">Message WhatsApp</button><button class="btn" id="bLien">Copier le lien de suivi</button></div><p id="dM" class="muted" style="font-size:.85rem;margin:8px 0 0" aria-live="polite"></p></div>
@@ -13161,11 +13171,11 @@ function vOrd(){if(isOp()||isLiv())return go(home());const o=S.orders.find(x=>x.
     o.pays.push({id:uid(),date:new Date().toISOString(),montant:m,mode:$('pMo').value,par:ME.id,photo});const was=!!o.confirmedAt;majConfirm(o);
     if(!Store.save()&&photo){o.pays[o.pays.length-1].photo='';Store.save();flash('Paiement enregistré, mais la photo n’a pas pu être gardée (mémoire pleine).','err');}
     else flash((!was&&o.confirmedAt?'Acompte reçu : commande confirmée, rang '+rangOf(o)+'.':'Paiement enregistré.')+(phKo?' La photo n’a pas pu être envoyée (pas de connexion).':''),phKo?'err':'ok');vOrd();};
-  if($('bRel'))$('bRel').onclick=()=>{const r={fond:$('rF').value,rg:o.forme==='Droit'?'':$('rG').value,rd:o.forme==='U'?$('rD').value:'',table:+$('rT').value===120?120:110,notes:$('rN').value,date:new Date().toISOString(),par:ME.id};
-    if(!(+r.fond>0)){flash('Indique au moins la cote du fond.','err');return vOrd();}if(cotesMin(o.forme,r)){flash(cotesMin(o.forme,r),'err');return vOrd();}const t0=totalOf(o);o.releve=r;Store.save();const t1=totalOf(o);
+  if($('bRel'))$('bRel').onclick=()=>{const r={fond:$('rF').value,rg:o.forme==='Droit'?'':$('rG').value,rd:o.forme==='U'?$('rD').value:'',table:+$('rT').value===120?120:110,acc:{g:{t:$('rAg').value,w:$('rWg').value},d:{t:$('rAd').value,w:$('rWd').value}},notes:$('rN').value,date:new Date().toISOString(),par:ME.id};
+    if(!(+r.fond>0)){flash('Indique au moins la cote du fond.','err');return vOrd();}if(cotesMin(o.forme,r)){flash(cotesMin(o.forme,r),'err');return vOrd();}if(accKo(r.acc)){flash(accKo(r.acc),'err');return vOrd();}r.acc=accN(r.acc);const t0=totalOf(o);o.releve=r;Store.save();const t1=totalOf(o);
     if(o.lotId&&ONLINE)Fab.prepare([o.id]).then(x=>{if(VIEW!=='ord'||ARG!==o.id)return;if(x.ko.length)flash('Cotes enregistrées, mais fiches non recalculées : '+fabErr(x.ko[0][1])+'.','err');else flash('Cotes corrigées : les fiches de fabrication du salon '+court(o)+' sont recalculées.');vOrd();});
     flash('Relevé enregistré.'+(t1!==t0?' Le total passe de '+dh(t0)+' à '+dh(t1)+'.':' Le prix ne change pas.'));vOrd();};
-  reportBind(o);livOrdBind(o);if($('oSr'))$('oSr').onchange=()=>{if(!$('oSr').value)return;o.sr=$('oSr').value;Store.save();flash('Commande rattachée au '+srNom(o)+'.');vOrd();};
+  ['g','d'].forEach(c=>{if($('rA'+c))$('rA'+c).onchange=()=>{$('rW'+c).hidden=$('rA'+c).value!=='t';};});reportBind(o);livOrdBind(o);if($('oSr'))$('oSr').onchange=()=>{if(!$('oSr').value)return;o.sr=$('oSr').value;Store.save();flash('Commande rattachée au '+srNom(o)+'.');vOrd();};
   if($('bVal'))$('bVal').onclick=()=>{o.valideAt=new Date().toISOString();o.validePar=ME.id;Store.save();flash('Commande validée pour la production. Lance-la dans un lot depuis l’onglet Production.');vOrd();};
   if($('bAnn'))$('bAnn').onclick=e=>{const b=e.currentTarget;if(!b.dataset.armed){b.dataset.armed='1';b.textContent='Confirmer l’annulation';return;}
     o.annule={at:new Date().toISOString(),par:ME.id,motif:o.confirmedAt?'annulée par le gérant':'réservation annulée'};Store.save();flash('Commande annulée.');vOrd();};
@@ -13210,7 +13220,7 @@ function bonPdf(o){const {jsPDF}=window.jspdf,d=new jsPDF({unit:'mm',format:'a4'
 /* ---------- réglages (gérant) ---------- */
 function vSet(){if(!isG())return go('list');const st=S.settings;
   const num=(k,l,u)=>`<div><label class="f" for="s_${k}">${l}</label><input type="number" class="num" id="s_${k}" data-k="${k}" step="any" value="${st[k]}" aria-label="${l} (${u})"></div>`;
-  shell('Promo Salon <b>Bois</b>','Réglages',`<div class="card"><h2>Offre et prix</h2><div class="g2">${num('base','Prix de l’offre (DH)','DH')}${num('mlBase','Métrage compris (ml)','ml')}${num('pMl','Mètre en plus (DH)','DH')}${num('arr','Mètre en plus compté par tranche entière de (m)','m')}${num('tolMl','Dépassement toléré sans supplément (m)','m')}${num('pVit','Vitres (DH)','DH')}${num('acPct','Acompte (%)','%')}</div></div>
+  shell('Promo Salon <b>Bois</b>','Réglages',`<div class="card"><h2>Offre et prix</h2><div class="g2">${num('base','Prix de l’offre (DH)','DH')}${num('mlBase','Métrage compris (ml)','ml')}${num('pMl','Mètre en plus (DH)','DH')}${num('arr','Mètre en plus compté par tranche entière de (m)','m')}${num('tolMl','Dépassement toléré sans supplément (m)','m')}${num('pVit','Vitres (DH)','DH')}${num('pTab','Accoudoir tablette : supplément par accoudoir (DH)','DH')}${num('pTir','Accoudoir à tiroir : supplément par accoudoir (DH)','DH')}${num('acPct','Acompte (%)','%')}</div></div>
    <div class="card"><h2>Ventes et livraisons</h2><div class="g2">${num('quota','Nombre de salons à vendre','salons')}${num('resH','Réservation sans acompte (heures)','h')}${num('rythme','Salons livrés par semaine','salons')}<div><label class="f" for="s_liv0">Semaine des premières livraisons</label><input type="date" id="s_liv0" data-k="liv0" value="${esc(st.liv0)}"></div></div></div>
    <div class="card"><h2>Livraison</h2><div class="g2">${num('capCam','Salons par camion (maximum conseillé)','salons')}</div><p class="muted" style="font-size:.85rem;margin:8px 0 0">Les salons prêts sont regroupés en tournées. Contrôle et regroupement du voyage la veille, solde encaissé avant le montage, photo du salon monté à la fin.</p></div>
    <div class="card"><h2>Délais</h2><p class="muted" style="font-size:.85rem;margin:0 0 6px">Jours travaillés : du lundi au samedi (le samedi, la journée finit à 15 h). Chaque étape doit être finie tant de jours travaillés après le lancement du lot. Les lots déjà lancés gardent leurs dates.</p>
@@ -13367,7 +13377,8 @@ async function openScanner(cb){closeScanner();const ov=document.createElement('d
   }catch(e){msg('Caméra indisponible ici. Tape le code écrit en gros sur la fiche.');const i=ov.querySelector('#scT');if(i)i.focus();}}
 
 /* ---------- morceaux communs ---------- */
-const tagsP=o=>`${tableOf(o)===120?'<span class="tag cot">Table 120</span> ':''}${o.prod&&o.prod.prio?'<span class="tag prio">Prioritaire</span> ':''}${bloque(o)?'<span class="tag exp">Bloqué</span> ':''}${enRetard(o)?'<span class="tag exp">En retard</span> ':''}${livree(o)?'<span class="tag liv">Livré</span>':pret(o)?'<span class="tag conf">'+(enTour(o)?'En tournée':'Prêt à livrer'+(n=>n>=1?' depuis '+n+' j':'')(Math.floor((Date.now()-new Date(o.prod.steps.emb.at).getTime())/864e5)))+'</span>':''}`;
+const accTag=o=>{const a=accOf(o),k=[a.g,a.d].filter(x=>x.t!=='m');return k.length?'<span class="tag cot">Acc. '+[...new Set(k.map(x=>x.t==='t'?'tablette':'tiroir'))].join(' + ')+'</span> ':'';};
+const tagsP=o=>`${tableOf(o)===120?'<span class="tag cot">Table 120</span> ':''}${accTag(o)}${o.prod&&o.prod.prio?'<span class="tag prio">Prioritaire</span> ':''}${bloque(o)?'<span class="tag exp">Bloqué</span> ':''}${enRetard(o)?'<span class="tag exp">En retard</span> ':''}${livree(o)?'<span class="tag liv">Livré</span>':pret(o)?'<span class="tag conf">'+(enTour(o)?'En tournée':'Prêt à livrer'+(n=>n>=1?' depuis '+n+' j':'')(Math.floor((Date.now()-new Date(o.prod.steps.emb.at).getTime())/864e5)))+'</span>':''}`;
 const dots=o=>`<span class="dots" role="img" aria-label="${nbDone(o)} étapes finies sur ${STEPS.length}">${STEPS.map(s=>`<i class="${done(o,s.k)?'d':dispo(o,s.k)?'c':''}"></i>`).join('')}</span>`;
 const cotes=o=>{const l=lgOf(o);return `fond ${fmt(l.fond||0)}${l.rg?' · gauche '+fmt(l.rg):''}${l.rd?' · droit '+fmt(l.rd):''} cm`;};
 function prodKpi(){const P=enProd(),pb=P.filter(bloque),rt=P.filter(o=>enRetard(o));
@@ -13389,14 +13400,14 @@ function facesOf(o){const l=lgOf(o),F=(+l.fond||0)*10,G=(+l.rg||0)*10,D=(+l.rd||
 function barresDe(o,L){const P=[];facesOf(o).forEach(l=>{const n=Math.max(1,Math.ceil((l+10)/L));for(let i=0;i<n;i++)P.push(Math.round(l/n));});P.sort((a,b)=>b-a);const B=[];
   for(const q of P){let b=B.find(x=>x.reduce((t,y)=>t+y+10,0)+q<=L);if(!b){b=[];B.push(b);}b.push(q);}return B.length;}
 function achats(O,lot){const st=S.settings,n=O.length,L=(+(lot&&lot.barre)||+st.barre||250),nb=O.reduce((t,o)=>t+barresDe(o,L*10),0),k=1+(+st.plCh||0)/100,
-   mf=O.reduce((t,o)=>t+facesOf(o).reduce((a,x)=>a+x,0)/1000,0),np=O.reduce((t,o)=>t+(Fab.calOk(o)?o.prod.fab.cal.n:7),0),ne=O.filter(o=>!Fab.calOk(o)).length,n120=O.filter(o=>tableOf(o)===120).length,noy=(PLQ.noy*n+0.19*n120+PLQ.bande*mf)*k,che=(PLQ.che*n+PLQ.arc*mf)*k,lg=O.filter(o=>mlOf(o)>10.2).length,
+   mf=O.reduce((t,o)=>t+facesOf(o).reduce((a,x)=>a+x,0)/1000,0),np=O.reduce((t,o)=>t+(Fab.calOk(o)?o.prod.fab.cal.n:7+(accTag(o)?1:0)),0),ne=O.filter(o=>!Fab.calOk(o)).length,n120=O.filter(o=>tableOf(o)===120).length,AX=O.flatMap(o=>{const a=accOf(o);return [a.g,a.d];}).filter(x=>x.t!=='m'),nTir=AX.filter(x=>x.t==='r').length,noy=(PLQ.noy*n+0.19*n120+AX.reduce((t,x)=>t+(x.w*10-80)/1000*1.501,0)+PLQ.bande*mf)*k,che=(PLQ.che*n+PLQ.arc*mf)*k,lg=O.filter(o=>mlOf(o)>10.2).length,
    kg=(v,nom)=>+v>0?`${nom} : <b>${fmt(v*n,Number.isInteger(Math.round(v*n*100)/10)?1:2)} kg</b>`:`${nom} : <span class="warn">à régler</span>`,
    Q=O.reduce((t,o)=>{const q=(o.prod&&o.prod.fab&&o.prod.fab.q)||QUI[o.forme]||QUI.U;for(const k in q)t[k]=(t[k]||0)+q[k];return t;},{}),pt=Math.max(0,+st.patinsT||0)*n;
   return `<table class="ach"><tbody><tr><td><b>Panneaux</b></td><td>CP 15 (122 × 244) : <b>${np} plaques</b>${ne&&ONLINE?` <span class="muted">(${ne} salon${ne>1?'s':''} à 7 en attendant le calepinage)</span>`:''}<br>CP 3 (122 × 300) : <b>${n} plaque${n>1?'s':''}</b></td></tr>
    <tr><td><b>Bois massif</b></td><td>Barres 8 × 4 de ${fmt(L)} cm : <b>${nb} barres</b><br><span class="muted">${fmt(mf,1)} m de faces</span></td></tr>
-   <tr><td><b>Placage</b></td><td>Noyer : <b>${fmt(noy,1)} m²</b><br>Chêne : <b>${fmt(che,1)} m²</b><br><span class="muted">chutes de ${fmt(+st.plCh||0)} % comprises${n120?' · '+n120+' table'+(n120>1?'s':'')+' Ø 120':''}</span></td></tr>
+   <tr><td><b>Placage</b></td><td>Noyer : <b>${fmt(noy,1)} m²</b><br>Chêne : <b>${fmt(che,1)} m²</b><br><span class="muted">chutes de ${fmt(+st.plCh||0)} % comprises${n120?' · '+n120+' table'+(n120>1?'s':'')+' Ø 120':''}${AX.length?' · '+AX.length+' accoudoir'+(AX.length>1?'s':'')+' tablette ou tiroir':''}</span></td></tr>
    <tr><td><b>Colles et Sintofer</b></td><td>${kg(st.colleKg,'Colle de placage')}<br>${kg(st.blancheKg,'Colle blanche à bois')}<br>${kg(st.sintoKg,'Sintofer de rebouchage')}</td></tr>
-   <tr><td><b>Quincaillerie</b></td><td>Vérins M8 : <b>${Q.ver}</b><br>Inserts M8 : <b>${Q.ver+QTAB.insM8*n}</b> <span class="muted">(vérins + plateaux)</span><br>Vis M8 des plateaux : <b>${QTAB.visM8*n}</b><br>Inserts M6 + vis M6 × 30 : <b>${Q.m6}</b><br>Vis à bois 4 × 30 : <b>${Q.v30}</b><br>Vis à bois 4 × 40 : <b>${Q.v40}</b><br>Patins feutre des caisses : <b>${Q.feu}</b><br>Patins de table et guéridons : <b>${pt}</b></td></tr></tbody></table>
+   <tr><td><b>Quincaillerie</b></td><td>${nTir?`Coulisses de tiroir 60 cm (accoudoirs) : <b>${nTir} paire${nTir>1?'s':''}</b><br>`:''}Vérins M8 : <b>${Q.ver}</b><br>Inserts M8 : <b>${Q.ver+QTAB.insM8*n}</b> <span class="muted">(vérins + plateaux)</span><br>Vis M8 des plateaux : <b>${QTAB.visM8*n}</b><br>Inserts M6 + vis M6 × 30 : <b>${Q.m6}</b><br>Vis à bois 4 × 30 : <b>${Q.v30}</b><br>Vis à bois 4 × 40 : <b>${Q.v40}</b><br>Patins feutre des caisses : <b>${Q.feu}</b><br>Patins de table et guéridons : <b>${pt}</b></td></tr></tbody></table>
    <p class="muted" style="font-size:.85rem;margin:6px 0 0">Une ligne par déplacement. Plaques CP 15 : ${ONLINE?'nombre du calepinage de chaque salon (7 tant qu’il n’est pas calculé)':'base du prototype de 10,2 ml'}.${lg&&ne?' '+lg+' salon(s) de plus de 10,2 ml : attendre le calepinage pour commander.':''} Placage : surfaces du modèle (accoudoirs sur les 2 joues, dessus et chants des plateaux, dessous non compté). Quincaillerie : quantités du modèle selon la forme du salon (U, L ou droit). Emballage pas encore compté.</p>`;}
 
 /* ---------- production (gérant) ---------- */
@@ -13541,7 +13552,7 @@ function fichePdf(L,name){const {jsPDF}=window.jspdf,d=new jsPDF({unit:'mm',form
     d.setDrawColor(29,37,35);d.setLineWidth(0.6);d.line(ox,by,ox+F*k,by);if(G>0)d.line(ox,by,ox,by+G*k);if(D>0)d.line(ox+F*k,by,ox+F*k,by+D*k);d.setLineWidth(0.3);d.setDrawColor(207,214,211);
     T('Fond '+fmt(F),ox+F*k/2,by-2.5,{b:1,s:13,a:'center'});const V=(t,x,yc)=>{d.setFont('helvetica','bold');d.setFontSize(13);T(t,x,yc+d.getTextWidth(cl(t))/2,{b:1,s:13,r:90});};if(G>0)V('Gauche '+fmt(G),ox-3,by+G*k/2);if(D>0)V('Droit '+fmt(D),ox+F*k+7.5,by+D*k/2);
     const tx=M+128;T('Forme '+o.forme,tx,134,{b:1,s:13});T('Métrage : '+fmt(mlOf(o),2)+' ml',tx,141,{s:10});
-    ['Profondeur 75','Face 12 (bande 4 + bombé 8)','2 accoudoirs minces 50','Angle incliné 30','Table 110 + 2 guéridons 50'].forEach((t,j)=>T(t,tx,149+j*5.5,{s:9,c:GR}));
+    ['Profondeur 75','Face 12 (bande 4 + bombé 8)',accTxt(o).replace(/^a/,'A')+' · h 50','Angle incliné 30','Table '+tableOf(o)+' + 2 guéridons 50'].forEach((t,j)=>T(t,tx,149+j*5.5,{s:9,c:GR}));
     const nt=(o.releve&&o.releve.notes)||o.notes;if(nt){const ls=d.splitTextToSize(cl('Remarques : '+nt),W-2*M);d.setFont('helvetica','normal');d.setFontSize(10);d.setTextColor(29,37,35);d.text(ls.slice(0,2),M,192);}
     /* étapes */
     y=204;d.setFillColor(227,238,246);d.rect(M,y-5,W-2*M,7,'F');T('ÉTAPE',M+10,y,{b:1,s:8});T('QUI',M+82,y,{b:1,s:8});T('FAIT',W-M-40,y,{b:1,s:8,a:'center'});T('DATE',W-M-14,y,{b:1,s:8,a:'center'});y+=9;
@@ -13578,7 +13589,7 @@ function cnc(D){const col={c:'#b9cfe0',t:'#e9c99b',g:'#c6dcbc'},ring=r=>'M'+r.ma
   if(!D.plaques.length){const c=D.cal||{};return head(D,qui(D,'cnc','Abdellatif'),'CNC panneaux')+chips([`<b>${D.nPcs}</b> pièces`,`<b>${D.nEtq}</b> étiquettes (carcasse)`,`<b>${cp3.length}</b> plaque CP 3`])+
    `<div class="msg${c.err?' err':''}" id="calMsg">${e(c.msg||'Le plan des plaques CP 15 et les programmes .cnc se préparent dans la version en ligne de l’app.')}</div>`+cp3.map(p=>pl(p,`CP 3 · ${cm(p.SW,0)} × ${cm(p.SL,0)}`)+`<p class="fnote">Peaux de la table et des guéridons (les mêmes pour tous les salons) : hauteur dans la longueur de la plaque, 25 mm mini entre pièces.</p>`).join('');}
   return head(D,qui(D,'cnc','Abdellatif'),'CNC panneaux')+chips([`<b>${D.plaques.length}</b> plaques CP 15`,`<b>${cp3.length}</b> plaque${cp3.length>1?'s':''} CP 3`,`<b>${nP}</b> pièces`,`<b>${D.nEtq}</b> étiquettes`])+
-   `<div class="leg"><i style="background:${col.c}"></i>Carcasse (étiquetée)<i style="background:${col.t}"></i>Table<i style="background:${col.g}"></i>Guéridons</div><p class="fnote" style="margin:0">Touche une plaque pour l’agrandir.</p>`+
+   `<div class="leg"><i style="background:${col.c}"></i>Carcasse (étiquetée)<i style="background:${col.t}"></i>Table<i style="background:${col.g}"></i>Guéridons<i style="background:${INK};border-radius:50%"></i>Perçage CNC</div><p class="fnote" style="margin:0">Touche une plaque pour l’agrandir. Semelles : perçage Ø 12 pour l’insert du vérin.</p>`+
    D.plaques.map(p=>pl(p,'CP 15')).join('')+cp3.map(p=>pl(p,`CP 3 · ${cm(p.SW,0)} × ${cm(p.SL,0)}`)+`<p class="fnote">Peaux : hauteur dans la longueur de la plaque, 25 mm mini entre pièces. Reste ${cm(p.SL-p.used-15,0)} cm de plaque.</p>`).join('')+
    `<div class="row2"><button class="btn pri" id="bCnc">Programmes .cnc</button><button class="btn" id="bEtq">Étiquettes 60 × 40</button></div><p id="cncM" class="muted" style="font-size:.85rem;margin:8px 0 0" aria-live="polite"></p>`;}
 
@@ -13623,22 +13634,25 @@ function facePlan(D,angles,col){const cxr=D.W/2,cyr=D.H*0.62;const F=D.faces.map
     return `<line x1="${f.a[0]}" y1="${f.a[1]}" x2="${f.b[0]}" y2="${f.b[1]}" stroke="${col||AC}" stroke-width="60" stroke-linecap="butt"/><circle cx="${bx}" cy="${by}" r="115" fill="${INK}"/>${txt(n,bx,by,{s:150,b:1,c:'#fff'})}${txt(cm(Math.max(f.dos,f.av)),tx,ty,{s:150,mono:1,b:1})}${Array.from({length:nParts(f,barL(D))-1},(_,i)=>{const t=(i+1)/nParts(f,barL(D)),px=f.a[0]+dx*t,py=f.a[1]+dy*t;return `<line x1="${px-nx*95}" y1="${py-ny*95}" x2="${px+nx*95}" y2="${py+ny*95}" stroke="${INK}" stroke-width="26"/>`;}).join('')}`;}).join('');
   let J='';if(angles){const seen={};D.faces.forEach(f=>[[f.a,f.c[0]],[f.b,f.c[1]]].forEach(([p,c])=>{const k=p.join(',');if(!c||seen[k])return;seen[k]=1;const vx=p[0]-cxr,vy=p[1]-cyr,l=Math.hypot(vx,vy);J+=`<circle cx="${p[0]}" cy="${p[1]}" r="38" fill="#a4501b"/>`+txt(String(c).replace('.',',')+'°',p[0]+vx/l*230,p[1]+vy/l*150,{s:125,b:1,c:'#a4501b'});}));}
   return plan(D,rects(D,'#eef1ef',LINE)+(col?D.acc.map(a=>`<rect x="${a.x0}" y="${a.y0}" width="${a.x1-a.x0}" height="${a.y1-a.y0}" fill="${NOY}"/>`).join(''):accs(D))+F+J,'Plan des faces vues de dessus');}
-function face(D){const a=D.acc[0];
+const accTp=a=>a.tp===1?'à tiroir':a.tp===0?'tablette':'mince';
+/* accoudoirs : un seul croquis si les deux sont pareils, sinon un par côté */
+const accGr=D=>D.acc.length===2&&D.acc[0].w===D.acc[1].w&&accTp(D.acc[0])===accTp(D.acc[1])?[[D.acc[0],'2 accoudoirs'+(accTp(D.acc[0])==='mince'?'':' '+accTp(D.acc[0])),2]]:D.acc.map(a=>[a,'Accoudoir '+a.nm.toLowerCase()+' · '+accTp(a),1]);
+function face(D){
   return head(D,qui(D,'face','Youssef'),'Pose des faces + accoudoirs')+facePlan(D,true)+
    `<div class="leg"><i style="background:${AC}"></i>Face bombée<i style="background:#a4501b;border-radius:50%"></i>Angle de coupe<i style="background:${INK}"></i>Accoudoir</div>
    <table class="ft"><thead><tr><th>N°</th><th>Morceau</th><th class="n">Grand côté</th><th class="n">Coupes</th></tr></thead><tbody>${D.faces.map(f=>`<tr><td><b>F${f.id.replace('FA-','')}</b></td><td>${e(f.nm)}</td><td class="n">${lgTxt(f,barL(D))}</td><td class="n">${f.c.map(c=>c?String(c).replace('.',',')+'°':'droite').join(' / ')}</td></tr>`).join('')}</tbody></table>
    <p class="fnote">Sous chaque morceau : la bande CP 15 de 4 cm, étiquetée FA-1 à FA-${D.faces.length}.</p>`+
    barInput(D)+barPlan(D,barL(D)).map((b,i)=>bar(b,barL(D),i+1)).join('')+
-   `<div class="pl"><div class="plh"><span class="prog">2 accoudoirs</span></div><svg viewBox="-200 -40 1300 760" role="img" aria-label="Accoudoir : longueur ${cm(a.l)} cm, épaisseur ${cm(a.w)} cm, dessus à ${cm(a.h,0)} cm du sol">
+   accGr(D).map(([a,ti])=>`<div class="pl"><div class="plh"><span class="prog">${ti}</span></div><svg viewBox="-200 -40 1300 760" role="img" aria-label="${ti} : longueur ${cm(a.l)} cm, ${accTp(a)==='mince'?'épaisseur':'largeur'} ${cm(a.w)} cm, dessus à ${cm(a.h,0)} cm du sol">
     <rect x="0" y="120" width="${a.l}" height="${a.h}" fill="#d6e2ec" stroke="${INK}" stroke-width="8"/><line x1="-120" y1="${120+a.h}" x2="${a.l+260}" y2="${120+a.h}" stroke="${INK}" stroke-width="10"/>
-    ${txt(cm(a.l),a.l/2,60,{s:80,b:1})}<line x1="${a.l+110}" y1="120" x2="${a.l+110}" y2="${120+a.h}" stroke="${INK}" stroke-width="6"/>${txt(cm(a.h,0),a.l+210,120+a.h/2,{s:80,b:1})}${txt('épaisseur '+cm(a.w,0),a.l/2,120+a.h/2,{s:64})}${txt('sol',-60,120+a.h+60,{s:50,c:MUT})}</svg></div>`;}
+    ${txt(cm(a.l),a.l/2,60,{s:80,b:1})}<line x1="${a.l+110}" y1="120" x2="${a.l+110}" y2="${120+a.h}" stroke="${INK}" stroke-width="6"/>${txt(cm(a.h,0),a.l+210,120+a.h/2,{s:80,b:1})}${txt((accTp(a)==='mince'?'épaisseur ':'largeur ')+cm(a.w,0),a.l/2,120+a.h/2,{s:64})}${txt('sol',-60,120+a.h+60,{s:50,c:MUT})}</svg></div>`).join('');}
 
 /* 6 — Placage */
-function plac(D){const ml=D.faces.reduce((s,f)=>s+Math.max(f.dos,f.av),0),a=D.acc[0],T=c=>`<span class="tt" style="background:${c==='n'?NOY:CHE};color:${c==='n'?'#fff':INK}">${c==='n'?'Noyer':'Chêne'}</span>`;
+function plac(D){const ml=D.faces.reduce((s,f)=>s+Math.max(f.dos,f.av),0),T=c=>`<span class="tt" style="background:${c==='n'?NOY:CHE};color:${c==='n'?'#fff':INK}">${c==='n'?'Noyer':'Chêne'}</span>`;
   return head(D,qui(D,'plac','Ayoub'),'Placage')+legT+facePlan(D,false,CHE)+
    `<table class="ft"><thead><tr><th>À plaquer</th><th class="n">Nb</th><th class="n">Cotes (cm)</th><th>Teinte</th></tr></thead><tbody>
     <tr><td><b>Faces bombées</b><br><span class="muted">fil en longueur</span></td><td class="n">${D.faces.length}</td><td class="n">${(ml/1000).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})} m × 8</td><td>${T('c')}</td></tr>
-    <tr><td><b>Accoudoirs</b></td><td class="n">${D.acc.length}</td><td class="n">${cm(a.l)} × ${cm(a.w,0)} × ${cm(a.h-117.5,0)}</td><td>${T('n')}</td></tr>
+    ${accGr(D).map(([a,ti,n])=>`<tr><td><b>${n===2?'Accoudoirs'+(accTp(a)==='mince'?'':' '+accTp(a)):ti}</b></td><td class="n">${n}</td><td class="n">${cm(a.l)} × ${cm(a.w,0)} × ${cm(a.h-117.5,0)}</td><td>${T('n')}</td></tr>`).join('')}
     <tr><td><b>Plateaux</b><br><span class="muted">table + 2 guéridons</span></td><td class="n">3</td><td class="n">Ø ${cm(D.table.pl,0)} · Ø ${cm(D.guer.pl,0)}</td><td>${T('n')}</td></tr>
     <tr><td><b>Lames des fûts</b></td><td class="n">9</td><td class="n">h ${cm(D.table.hb,0)} · h ${cm(D.guer.hb,0)}</td><td>${T('n')}</td></tr>
     <tr><td><b>Entre les lames</b></td><td class="n">9</td><td class="n">larg. ${cm(D.table.lis,0)} · ${cm(D.guer.lis,0)}</td><td>${T('c')}</td></tr>
@@ -13662,7 +13676,7 @@ const CP3STD=[{"n":1,"prog":"CP3","SL":3000,"SW":1220,"used":2450,"np":27,"nh":0
 const Fab=(()=>{
   const ATT_S=300,ATT_W=6,   // attaches « petites pièces » : moins de 300 cm² (réglable) ou moins de 6 cm de large
   attS=()=>{const a=+S.settings.att;return a>=50?a:ATT_S;},
-  GENV='19p3',GENF='19p6',CALV=1,CALB=480000,CFG0={pCo:1,sty:0,P:750,em:300,ang:1,c:300,eS:15,SL:2440,SW:1220,fm:2,F:120,hP:40,endG:1,endD:1,accG:1,accD:1,acT:2,acSame:1,acH:382.5,tPl:20,hPl:90};
+  GENV='19p3',GENF='19p7',CALV=1,CALB=480000,CFG0={pCo:1,sty:0,P:750,em:300,ang:1,c:300,eS:15,SL:2440,SW:1220,fm:2,F:120,hP:40,endG:1,endD:1,accG:1,accD:1,acT:2,acSame:1,acH:382.5,tPl:20,hPl:90};
   const TABLE={pl:1100,ep:30,rb:325,rs:206.5,rh0:176.5,rh1:120,hb:420,h:620,ds:610,hs:15,lis:60},GUER={pl:500,ep:30,rb:170,rs:110,rh0:90,rh1:60,hb:360,h:540,ds:300,hs:15,lis:50};
   let fr=null,ready=null,busy=false;
   function load(){if(ready)return ready;
@@ -13694,10 +13708,13 @@ const Fab=(()=>{
     const faces=nm.map((k,i)=>{const t0=i?turn(i-1):0,t1=i<n-1?turn(i):0,dos=dir(i)[2],av=dos-E*Math.tan(t0/2)-E*Math.tan(t1/2);
       return {k,nm:LAB[k],a:[fx(pts[i][0]),r1(pts[i][1])],b:[fx(pts[i+1][0]),r1(pts[i+1][1])],dos:r1(dos),av:r1(av),c:[r1(Math.abs(t0)*90/Math.PI),r1(Math.abs(t1)*90/Math.PI)]};})
       .sort((a,b)=>ORD.indexOf(a.k)-ORD.indexOf(b.k)).map((f,i)=>{const {k,...r}=f;return {id:'FA-'+(i+1),...r};});
-    const acc=['G','D'].filter(k=>g.acc&&g.acc[k]).map(k=>{const a=g.acc[k],b=a.bb;return {id:'AC'+k,nm:k==='G'?'Gauche':'Droit',x0:fx(b[2]),y0:r1(b[1]),x1:fx(b[0]),y1:r1(b[3]),l:Math.round(Math.max(b[2]-b[0],b[3]-b[1])),w:a.W,h:500};});
+    const acc=['G','D'].filter(k=>g.acc&&g.acc[k]).map(k=>{const a=g.acc[k],b=a.bb;return {id:'AC'+k,nm:k==='G'?'Gauche':'Droit',x0:fx(b[2]),y0:r1(b[1]),x1:fx(b[0]),y1:r1(b[3]),l:Math.round(Math.max(b[2]-b[0],b[3]-b[1])),w:a.W,h:500,...(a.tp===0||a.tp===1?{tp:a.tp}:{})};});
     return {v:1,gen:GENV,at:new Date().toISOString(),W:Math.round(W),H:Math.round(Math.max(g.Ly,CFG0.P+250)),P:CFG0.P,lgc:{fond:+lg.fond||0,rg:+lg.rg||0,rd:+lg.rd||0},
       banq,ang:ang.map((a,i)=>({id:'AN'+(i+1),p:a.p.map(q=>[fx(q[0]),r1(q[1])])})),acc,faces,nEtq:g.nCarc,nPcs:g.nCarc+87,...(hwq(g.hw)?{q:hwq(g.hw)}:{})};}
-  const cfgOf=o=>{const lg=lgOf(o),F=+lg.fond||0,G=+lg.rg||0,D=+lg.rd||0;return {...CFG0,forme:o.forme==='U'?3:o.forme==='L'?1:0,L2:F*10,L1:o.forme==='Droit'?0:G*10,L3:o.forme==='U'?D*10:0,...(tableOf(o)===120?{tb:120,mg:10}:{})};};   // table Ø 120 : le plateau prend toute la largeur de la plaque, marge de 10 mm
+  // accoudoirs au choix par côté (mince 8 cm compris ; tablette ou tiroir en option) : rien n'est ajouté si les deux sont minces, le salon standard reste identique
+  const acKey=a=>{a=accN(a);return a.g.t+a.g.w+'|'+a.d.t+a.d.w;};
+  const accCfg=o=>{const a=accOf(o),T={m:2,t:0,r:1};return a.g.t==='m'&&a.d.t==='m'?{}:{acSame:0,acT:T[a.g.t],acW:a.g.w*10,acTD:T[a.d.t],acWD:a.d.w*10,acHD:CFG0.acH,acP:0,acPD:0};};
+  const cfgOf=o=>{const lg=lgOf(o),F=+lg.fond||0,G=+lg.rg||0,D=+lg.rd||0;return {...CFG0,forme:o.forme==='U'?3:o.forme==='L'?1:0,L2:F*10,L1:o.forme==='Droit'?0:G*10,L3:o.forme==='U'?D*10:0,...(tableOf(o)===120?{tb:120,mg:10}:{}),...accCfg(o)};};   // table Ø 120 : le plateau prend toute la largeur de la plaque, marge de 10 mm
   async function make(o){const lg=lgOf(o),F=+lg.fond||0,G=+lg.rg||0,D=+lg.rd||0;
     if(!(F>0)||(o.forme!=='Droit'&&!(G>0))||(o.forme==='U'&&!(D>0)))throw new Error('cotes incomplètes');
     const W=await load(),c=cfgOf(o);
@@ -13709,11 +13726,11 @@ const Fab=(()=>{
   function dossier(o){const f=o.prod&&o.prod.fab;if(!f)return null;const l=lotOf(o),lg=lgOf(o),q={};POSTES.forEach(p=>{q[p.k]=opsDe(p.k).join(' · ');});
     return {...f,code:court(o),nom:o.client.nom+' · '+o.code,forme:o.forme,lg:{fond:+lg.fond||0,rg:+lg.rg||0,rd:+lg.rd||0},SL:2440,SW:1220,barres:{L:((l&&l.barre)||S.settings.barre||250)*10},plaques:(planGet(o)||{}).pl||[],cal:calInfo(o),cp3:CP3STD,table:f.tb===120?{...TABLE,pl:1200}:TABLE,guer:GUER,qui:q};}
   // les cotes ont-elles changé depuis le calcul ?
-  const perime=o=>{const f=o.prod&&o.prod.fab,lg=lgOf(o);return !!f&&((f.gen!==GENV&&!done(o,'cnc'))||!f.lgc||f.lgc.fond!==(+lg.fond||0)||f.lgc.rg!==(+lg.rg||0)||f.lgc.rd!==(+lg.rd||0)||(f.tb||110)!==tableOf(o));};
+  const perime=o=>{const f=o.prod&&o.prod.fab,lg=lgOf(o);return !!f&&((f.gen!==GENV&&!done(o,'cnc'))||!f.lgc||f.lgc.fond!==(+lg.fond||0)||f.lgc.rg!==(+lg.rg||0)||f.lgc.rd!==(+lg.rd||0)||(f.tb||110)!==tableOf(o)||acKey(f.ac)!==acKey(accOf(o)));};
   // prépare les fiches d'une liste de salons, l'un après l'autre
   async function prepare(ids,onStep){if(busy)return {ok:0,ko:[['','calcul déjà en cours']]};busy=true;let ok=0;const ko=[];
     try{for(const id of ids){const o=S.orders.find(x=>x.id===id);if(!o)continue;if(onStep)onStep(o);
-        try{const old=o.prod&&o.prod.fab,tb=tableOf(o),f=await make(o);f.tb=tb;if(old&&old.cal&&old.gen===GENV&&(old.tb||110)===tb&&old.lgc&&['fond','rg','rd'].every(k=>old.lgc[k]===f.lgc[k]))f.cal=old.cal;prodOf(o).fab=f;ok++;Store.save();}catch(e){ko.push([court(o),e.message||String(e)]);if(/introuvable|délai/.test(e.message||''))break;}}}
+        try{const old=o.prod&&o.prod.fab,tb=tableOf(o),ac=accOf(o),f=await make(o);f.tb=tb;f.ac=ac;if(old&&old.cal&&old.gen===GENV&&(old.tb||110)===tb&&acKey(old.ac)===acKey(ac)&&old.lgc&&['fond','rg','rd'].every(k=>old.lgc[k]===f.lgc[k]))f.cal=old.cal;prodOf(o).fab=f;ok++;Store.save();}catch(e){ko.push([court(o),e.message||String(e)]);if(/introuvable|délai/.test(e.message||''))break;}}}
     finally{busy=false;}
     return {ok,ko};}
   /* ----- calepinage CP 15 : plan rapide tout de suite, puis recherche d'une plaque de moins en arrière-plan (un salon à la fois) ----- */
@@ -13960,7 +13977,7 @@ function blPdf(o){const {jsPDF}=window.jspdf,d=new jsPDF({unit:'mm',format:'a4'}
   T('WhatsApp : '+st.tel,M,y,{s:9,c:GR});T('Livré le '+fdate(L.fin.at),W-M,y,{s:9,a:'right',c:GR});y+=5;d.setDrawColor(207,214,211);d.setLineWidth(0.3);d.line(M,y,W-M,y);y+=8;
   H('CLIENT');T(o.client.nom,M,y,{b:1,s:12});y+=5.5;T('Téléphone : '+(o.client.tel||'-'),M,y);y+=5;T(villeDe(o)||'-',M,y);y+=10;
   d.setFillColor(227,238,246);d.rect(M,y-5,W-2*M,7,'F');T('LIVRÉ ET MONTÉ',M+2,y,{b:1,s:8});T('QUANTITÉ',W-M-2,y,{b:1,s:8,a:'right'});y+=7;
-  const rows=[[`Salon marocain bois seul - forme ${o.forme} : fond ${l.fond||0} cm${l.rg?' · retour gauche '+l.rg+' cm':''}${l.rd?' · retour droit '+l.rd+' cm':''} (${fmt(mlOf(o),2)} ml)`,'1'],['Accoudoirs','2'],['Table Ø '+tableOf(o),'1'],['Guéridons 50','2'],...(o.vitres?[['Vitres de protection (table + 2 guéridons)','3']]:[])];
+  const rows=[[`Salon marocain bois seul - forme ${o.forme} : fond ${l.fond||0} cm${l.rg?' · retour gauche '+l.rg+' cm':''}${l.rd?' · retour droit '+l.rd+' cm':''} (${fmt(mlOf(o),2)} ml)`,'1'],[accTxt(o).replace(/^2 a/,'A').replace(/^a/,'A'),'2'],['Table Ø '+tableOf(o),'1'],['Guéridons 50','2'],...(o.vitres?[['Vitres de protection (table + 2 guéridons)','3']]:[])];
   for(const [lab,q] of rows){const ls=d.splitTextToSize(cl(lab),150);T(ls,M+2,y);T(q,W-M-2,y,{a:'right'});y+=5*ls.length+2;d.line(M,y-3.5,W-M,y-3.5);}
   y+=1;if(L.ctrl){T('Colis contrôlés au départ : '+L.ctrl.colis,M+2,y,{s:9,c:GR});y+=5;}y+=5;
   H('PAIEMENT');const P=(o.pays||[]).filter(p=>p.liv);for(const p of P){T(`Solde reçu à la livraison : ${dh(p.montant)} (${p.mode.toLowerCase()})`,M,y);y+=5;}
@@ -14069,7 +14086,7 @@ const Net=(()=>{
   function lost(){token=null;ME=null;wipe();saveCache();flash('Session terminée : reconnecte-toi.','err');go('login');}
 
   /* --- écran --- */
-  function safe(){if(['new','login'].includes(VIEW)||SCAN||dirty)return false;const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return false;return !document.querySelector('[data-armed]');}
+  function safe(){if(['new','login'].includes(VIEW)||SCAN||dirty)return false;const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return false;return !document.querySelector('[data-armed],[data-sur]');}
   function redraw(){stale=false;const y=window.scrollY;render();window.scrollTo(0,y);}
   function status(){const el=document.getElementById('net');if(!el)return;const n=token?changes().length:0;
     el.hidden=!off;el.textContent=off?'Hors connexion'+(n?' : '+n+' changement'+(n>1?'s':'')+' en attente, envoyé'+(n>1?'s':'')+' au retour du réseau.':' : les données affichées sont celles de la dernière connexion.'):n?'Envoi en cours…':'';}
