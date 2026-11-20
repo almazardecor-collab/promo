@@ -206,7 +206,8 @@ function simp(Rg,tol){const n=Rg.length;if(n<8)return Rg.map(q=>[Math.round(q[0]
   dp(a,b);dp(b,n+a);const o=[];for(let i=0;i<n;i++)if(keep[i])o.push([Math.round(Rg[i][0]),Math.round(Rg[i][1])]);return o.length>=3?o:Rg.map(q=>[Math.round(q[0]),Math.round(q[1])]);}
 function planOf(sheets){return sheets.map((sh,k)=>{let nh=0,npc=0,used=0;const it=sh.items.map(i=>{const p=i.p,O=toSheet(i,p.out),e={u:p.tab?(p.unit==='T'?'t':'g'):'c',o:simp(O,1)};for(const q of O)if(q[0]>used)used=q[0];
       const hs=(p.holes||[]).map(h=>{const S=toSheet(i,h),b=bbox(S);return simp(S,b.w*b.h<3000?0.4:1);});if(hs.length){e.h=hs;nh+=hs.length;}
-      const pr=(p.pkL||[]).filter(q=>p.tab&&/PERCAGE/.test(q.lay)).map(q=>{const c=circOf(toSheet(i,q.pts));return c?[Math.round(c.cx),Math.round(c.cy),Math.max(5,Math.round(c.r+2))]:null;}).filter(Boolean);if(pr.length){e.p=pr;npc+=pr.length;}
+      // tous les perçages faits par la CNC sont dessinés : inserts de vérins Ø 12 des semelles, vis, inserts (les fraisages, faits à la main, ne le sont pas)
+      const pr=(p.pkL||[]).filter(q=>/PERCAGE/.test(q.lay)).map(q=>{const c=circOf(toSheet(i,q.pts));return c?[Math.round(c.cx*10)/10,Math.round(c.cy*10)/10,p.tab?Math.max(5,Math.round(c.r+2)):Math.max(3,Math.round(c.r))]:null;}).filter(Boolean);if(pr.length){e.p=pr;npc+=pr.length;}
       return e;});
     return {n:k+1,prog:String(k+1),SL:sh.SL,SW:sh.SW,used:Math.round(used),np:it.length,nh,npc,ne:sh.items.filter(i=>!i.p.tab).length,it};});}
 
