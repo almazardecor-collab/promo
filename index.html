@@ -2,6 +2,7 @@
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Promo Salon Bois — Commandes et production</title>
 <meta name="claude:viewport-fit-sides" content="cover">
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#1f5f8b"><link rel="icon" type="image/png" href="icon-192.png"><link rel="apple-touch-icon" href="icon-180.png"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Promo Salon"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
@@ -14244,5 +14245,24 @@ Store.load();
  if(code)vSuivi(code);
  else if(ONLINE)Net.start();
  else{const id=sessGet();ME=S.users.find(u=>u.id===id&&u.actif!==false)||null;if(ME)afterLogin();else{VIEW='login';render();}}}
+</script>
+<script>
+(function(){if('serviceWorker' in navigator)window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});
+  var K='psb_inst_x',alone=(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
+  if(alone||location.search||location.hash)return;   // déjà installée, ou lien de suivi d'un client / scan d'une fiche
+  try{if(Date.now()-(+localStorage.getItem(K)||0)<30*864e5)return;}catch(e){}
+  var ev=null,bar=null;
+  function show(txt,btn){if(bar)return;bar=document.createElement('div');bar.id='psbInst';bar.setAttribute('role','region');bar.setAttribute('aria-label','Installer l’application');
+    bar.style.cssText='background:#1f5f8b;color:#fff;font:500 15px/1.35 "Barlow Semi Condensed",system-ui,sans-serif;padding:10px 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap';
+    var t=document.createElement('span');t.style.cssText='flex:1 1 180px';t.textContent=txt;bar.appendChild(t);
+    if(btn){var b=document.createElement('button');b.type='button';b.id='psbInstB';b.textContent='Installer';b.style.cssText='background:#fff;color:#1f5f8b;border:0;border-radius:8px;font:600 15px "Barlow Semi Condensed",system-ui,sans-serif;padding:8px 14px;min-height:40px;cursor:pointer';
+      b.onclick=function(){if(!ev)return;ev.prompt();ev.userChoice.then(function(){hide(false);});};bar.appendChild(b);}
+    var x=document.createElement('button');x.type='button';x.id='psbInstX';x.setAttribute('aria-label','Fermer');x.textContent='Plus tard';x.style.cssText='background:transparent;color:#fff;border:1px solid rgba(255,255,255,.6);border-radius:8px;font:500 14px "Barlow Semi Condensed",system-ui,sans-serif;padding:8px 10px;min-height:40px;cursor:pointer';
+    x.onclick=function(){hide(true);};bar.appendChild(x);document.body.insertBefore(bar,document.body.firstChild);}
+  function hide(keep){if(bar){bar.remove();bar=null;}if(keep){try{localStorage.setItem(K,String(Date.now()));}catch(e){}}}
+  window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();ev=e;show('Installe l’app sur ce téléphone pour l’ouvrir comme une application.',true);});
+  window.addEventListener('appinstalled',function(){hide(false);});
+  var ua=navigator.userAgent||'';if(/iphone|ipad|ipod/i.test(ua)||(/macintosh/i.test(ua)&&navigator.maxTouchPoints>1))window.addEventListener('load',function(){show('Pour installer l’app sur iPhone : touche le bouton Partager, puis « Sur l’écran d’accueil ».',false);});
+})();
 </script>
 </body></html>
