@@ -91,6 +91,8 @@ nav.bot button{font-size:.92rem}
 .tag.liv{background:var(--ok);color:#fff}
 nav.bot.n6{gap:2px;padding-left:max(3px,env(safe-area-inset-left));padding-right:max(3px,env(safe-area-inset-right))}
 nav.bot.n6 button{font-size:.8rem;padding:8px 1px;min-width:0}
+nav.bot.n7{gap:1px}
+nav.bot.n7 button{font-size:.7rem;padding:8px 0;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .it.sel{cursor:pointer}.it.sel input{width:22px;height:22px;vertical-align:middle;margin:0 4px 0 0}
 .solde{font-family:var(--f-num);font-size:2.2rem;font-weight:600;margin:0 0 4px;color:var(--accent)}
 .thumb.big{display:block;width:auto;max-width:100%;height:auto;max-height:300px;margin-top:8px}
@@ -13036,11 +13038,11 @@ let VIEW='login',ARG=null,FLASH=null,FIL='tous',Q='';
 function go(v,a){VIEW=v;ARG=a??null;render();window.scrollTo(0,0);}
 function flash(t,k){FLASH={t,k:k||'ok'};}
 function shell(title,sub,body,tabs=true){const f=FLASH;FLASH=null;
-  const T=isG()?[['dash','Tableau'],['list','Commandes'],['new','Nouvelle'],['prod','Production'],['tour','Livraison'],['set','Réglages']]:isOp()?[['op','Mon travail']]:isLiv()?[['liv','Mes livraisons']]:[['list','Commandes'],['new','Nouvelle']];
+  const T=isG()?[['dash','Tableau'],['list','Commandes'],['devis','Devis'],['new','Nouvelle'],['prod','Production'],['tour','Livraison'],['set','Réglages']]:isOp()?[['op','Mon travail']]:isLiv()?[['liv','Mes livraisons']]:[['list','Commandes'],['devis','Devis'],['new','Nouvelle']];
   document.getElementById('root').innerHTML=`<div class="app"><header class="top"><h1>${title}${sub?`<small>${sub}</small>`:''}</h1>${ME?`<button class="btn sm" id="bOut">${esc(ME.nom)} · Quitter</button>`:''}</header>
   ${ONLINE?'<div class="demo" id="net" hidden></div>':`<div class="demo">Version d’essai : les données sont enregistrées sur cet appareil seulement${MEM?' (mémoire du navigateur indisponible : elles seront perdues à la fermeture)':''}.</div>`}
   ${f?`<div class="msg ${f.k}" role="status">${esc(f.t)}</div>`:''}${body}</div>
-  ${ME&&tabs?`<nav class="bot${T.length>5?' n6':''}">${T.map(([v,l])=>`<button data-go="${v}"${VIEW===v?' aria-current="page"':''}>${l}</button>`).join('')}</nav>`:''}`;
+  ${ME&&tabs?`<nav class="bot${T.length>5?' n6':''}${T.length>6?' n7':''}">${T.map(([v,l])=>`<button data-go="${v}"${VIEW===v?' aria-current="page"':''}>${l}</button>`).join('')}</nav>`:''}`;
   const o=$('bOut');if(o)o.onclick=()=>{if(ONLINE)return Net.logout();ME=null;sessSet(null);go('login');};
   document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go,b.dataset.arg));
   document.querySelectorAll('[data-sal]').forEach(b=>b.onclick=()=>go('sal',{id:b.dataset.sal}));document.querySelectorAll('[data-ls]').forEach(b=>b.onclick=()=>go('ls',{id:b.dataset.ls}));if(ONLINE)Net.rendered();}
@@ -13103,6 +13105,37 @@ function vList(){if(isOp()||isLiv())return go(home());let mine=isG()?S.orders:S.
   document.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{FIL=b.dataset.f;vList();});
   document.querySelectorAll('[data-fs]').forEach(b=>b.onclick=()=>{FSR=b.dataset.fs;vList();});
   document.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>go('ord',b.dataset.o));}
+
+/* ---------- devis envoyés par le robot WhatsApp ---------- */
+let DEV=null,DEVQ='',DEVLOAD=false;
+const devTel=t=>{const d=telN(t);return d.length>=9?'0'+d.slice(-9):d;};
+const devOrder=d=>{const t9=telN(d.tel).slice(-9);return S.orders.find(o=>!o.interne&&telN(o.client&&o.client.tel).slice(-9)===t9)||null;};
+function vDevis(){if(isOp()||isLiv())return go(home());
+  if(!ONLINE){shell('Promo Salon <b>Bois</b>','Devis WhatsApp','<p class="muted">Les devis du robot WhatsApp s’affichent seulement dans la version en ligne.</p>');return;}
+  if(DEV===null&&!DEVLOAD){DEVLOAD=true;Net.devis().then(r=>{DEVLOAD=false;DEV=r&&r.ok?r.devis:{err:(r&&r.err)||'net'};if(VIEW==='devis')vDevis();});}
+  const q=DEVQ.trim().toLowerCase();
+  const L=Array.isArray(DEV)?DEV.filter(d=>!q||[d.nom,d.tel,devTel(d.tel),d.ville,d.code].join(' ').toLowerCase().includes(q)):[];
+  const body=DEV===null?'<p class="muted">Chargement des devis…</p>':!Array.isArray(DEV)?`<div class="msg err">Impossible de charger les devis${DEV.err==='auth'?' : reconnecte-toi.':' : vérifie la connexion.'}</div>`:
+   (L.length?L.map(d=>{const o=devOrder(d),c=d.commande||{},lg=c.lg||{};const cot=[lg.fond,lg.rg,lg.rd].filter(x=>x!==''&&x!=null).join(' / ');
+     return `<div class="card" style="padding:12px;margin-bottom:8px">
+      <div class="l1" style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>${esc(d.nom||'Sans nom')}</b><span>${d.test?'<span class="tag exp">Test</span> ':''}${o?`<span class="tag conf">${esc(o.code)}</span>`:'<span class="tag res">Devis</span>'}</span></div>
+      <div class="muted" style="margin:4px 0">${esc(devTel(d.tel))} · ${esc(d.ville||'—')} · ${fdate(d.at)}</div>
+      <div>Salon ${esc(c.forme||'')} ${esc(cot)} cm${c.table?' · table '+c.table:''}</div>
+      <div style="margin:4px 0"><b>${fmt(+d.total)} DH</b> <span class="muted">· acompte ${fmt(+d.acompte)} DH</span></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+       ${d.url?`<a class="btn sm" href="${esc(d.url)}" target="_blank" rel="noopener">PDF</a>`:''}
+       <a class="btn sm" href="https://wa.me/${telWa(d.tel)}" target="_blank" rel="noopener">WhatsApp</a>
+       ${o?`<button class="btn sm" data-o="${o.id}">Voir la commande</button>`:`<button class="btn sm pri" data-dv="${esc(d.id)}">Créer la commande</button>`}
+      </div></div>`;}).join(''):'<p class="muted">Aucun devis envoyé par le robot pour l’instant.</p>');
+  shell('Promo Salon <b>Bois</b>','Devis envoyés sur WhatsApp',`<div style="display:flex;gap:6px;margin-bottom:8px"><input type="text" id="dq" placeholder="Chercher : nom, téléphone, ville" value="${esc(DEVQ)}" aria-label="Chercher un devis" style="flex:1"><button class="btn sm" id="dR" aria-label="Actualiser">↻</button></div>${body}`);
+  $('dq').oninput=e=>{DEVQ=e.target.value;const p=e.target.selectionStart;vDevis();const el=$('dq');el.focus();el.setSelectionRange(p,p);};
+  $('dR').onclick=()=>{DEV=null;vDevis();};
+  document.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>go('ord',b.dataset.o));
+  document.querySelectorAll('[data-dv]').forEach(b=>b.onclick=()=>{const d=(DEV||[]).find(x=>x.id===b.dataset.dv);if(!d)return;const c=JSON.parse(JSON.stringify(d.commande||{})),base=newDraft();
+    DRAFT={...base,...c,interne:false,canal:'WhatsApp',remise:0,remiseMotif:'',notes:(c.notes&&c.notes!=='Réservée par le robot WhatsApp'?c.notes:'')||('Devis WhatsApp '+(d.code||'')),
+      client:{nom:(c.client&&c.client.nom)||d.nom||'',tel:devTel(d.tel),ville:(c.client&&c.client.ville)||d.ville||'',quartier:(c.client&&c.client.quartier)||''},
+      lg:{fond:String((c.lg&&c.lg.fond)||''),rg:String((c.lg&&c.lg.rg)||''),rd:String((c.lg&&c.lg.rd)||'')},sr:isG()?(c.sr||base.sr):base.sr};
+    flash('Commande préremplie depuis le devis WhatsApp : vérifie puis enregistre.');go('new');});}
 
 /* ---------- nouvelle commande ---------- */
 let DRAFT=null;
@@ -14237,11 +14270,11 @@ const Net=(()=>{
   async function reset(){try{const r=await rpc('psb_push',{p_token:token,p_changes:[{k:'reset'}],p_gpin:null});if(!r.ok||!(r.res[0]||{}).ok)return false;S.orders.length=0;S.lots.length=0;tours().length=0;BASE.orders={};BASE.lots={};BASE.tours={};saveCache();flush();return true;}catch(e){return false;}}
   async function suivi(code,k4){try{return await rpc('psb_suivi',{p_code:code,p_k4:k4});}catch(e){return {err:'net'};}}
   const img=v=>!v?'':v.startsWith('ph:')?(PH[v.slice(3)]?`src="${PH[v.slice(3)]}"`:`src="${BLANK}" data-ph="${esc(v.slice(3))}"`):`src="${v}"`;
-  return {login,setup,logout,start,create,photo,reset,suivi,img,rendered,flush,needSetup:()=>!!bootInfo.setup,_dbg:()=>({since,off,busy,pending:changes(),BASE})};
+  return {devis:async()=>{if(!token)return {err:'auth'};try{return await rpc('psb_devis_list',{p_token:token});}catch(e){return {err:'net'};}},login,setup,logout,start,create,photo,reset,suivi,img,rendered,flush,needSetup:()=>!!bootInfo.setup,_dbg:()=>({since,off,busy,pending:changes(),BASE})};
 })();
 
 /* ---------- démarrage ---------- */
-function render(){const V={login:vLogin,dash:vDash,list:vList,new:vNew,ord:vOrd,set:vSet,prod:vProd,op:vOp,sal:vSal,tour:vTour,liv:vLiv,ls:vLs};closeScanner();if(ME&&isOp()&&!['op','sal'].includes(VIEW))VIEW='op';if(ME&&isLiv()&&!['liv','ls'].includes(VIEW))VIEW='liv';(V[VIEW]||vLogin)();}
+function render(){const V={login:vLogin,dash:vDash,list:vList,devis:vDevis,new:vNew,ord:vOrd,set:vSet,prod:vProd,op:vOp,sal:vSal,tour:vTour,liv:vLiv,ls:vLs};closeScanner();if(ME&&isOp()&&!['op','sal'].includes(VIEW))VIEW='op';if(ME&&isLiv()&&!['liv','ls'].includes(VIEW))VIEW='liv';(V[VIEW]||vLogin)();}
 Store.load();
 {const q=new URLSearchParams(location.search),code=q.get('s');PENDP=q.get('p');
  if(code)vSuivi(code);
