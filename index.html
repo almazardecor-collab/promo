@@ -13196,6 +13196,28 @@ function devisPdf(dv){const {jsPDF}=window.jspdf,d=new jsPDF({unit:'mm',format:'
   for(const c of C){const ls=d.splitTextToSize(cl('- '+c),W-2*M);T(ls,M,y,{s:9,c:G});y+=4.3*ls.length+1;}
   return {blob:d.output('blob'),name:('Devis-'+(dv.code||'')+'-'+nom.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9]+/g,'-').slice(0,30)).replace(/-+$/,'')+'.pdf'};}
 
+/* ---------- garder la page et les saisies en cours quand le téléphone ferme l'app en arrière-plan ---------- */
+const UIK='psb_ui_v1';let UIT=null,UIR=false;
+const uiFields=()=>{const f={};document.querySelectorAll('#root input[id],#root select[id],#root textarea[id]').forEach(e=>{if(e.type==='password'||e.type==='file'||e.type==='hidden')return;f[e.id]=(e.type==='checkbox'||e.type==='radio')?!!e.checked:e.value;});return f;};
+function uiSave(){clearTimeout(UIT);UIT=null;if(UIR)return;try{if(!ME||VIEW==='login'||!document.getElementById('root')){localStorage.removeItem(UIK);return;}
+  localStorage.setItem(UIK,JSON.stringify({u:ME.id,at:Date.now(),v:VIEW,a:ARG,d:DRAFT,dd:DDRAFT,q:Q,fil:FIL,fsr:FSR,dq:DEVQ,y:Math.round(window.scrollY),f:uiFields()}));}catch(e){}}
+const uiSoon=()=>{if(!UIT)UIT=setTimeout(uiSave,300);};
+document.addEventListener('input',uiSoon,true);document.addEventListener('change',uiSoon,true);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')uiSave();});window.addEventListener('pagehide',uiSave);
+/* remet les valeurs des champs : d'abord les listes et les cases (elles montrent ou cachent d'autres champs), puis les saisies */
+function uiApply(F){const ids=Object.keys(F||{}),get=id=>{const e=document.getElementById(id);return e&&e.closest('#root')?e:null;};
+  for(const id of ids){const e=get(id);if(!e)continue;const ck=e.type==='checkbox'||e.type==='radio';if(!ck&&e.tagName!=='SELECT')continue;
+    if(ck){if(e.checked===!!F[id])continue;e.checked=!!F[id];}else{if(e.value===String(F[id]))continue;e.value=String(F[id]);if(e.value!==String(F[id]))continue;}
+    e.dispatchEvent(new Event('change',{bubbles:true}));}
+  for(const id of ids){const e=get(id);if(!e||e.type==='checkbox'||e.type==='radio'||e.tagName==='SELECT'||e.type==='password'||e.type==='file')continue;if(e.value!==String(F[id]))e.value=String(F[id]);}}
+/* au redémarrage : même personne, moins de 12 h → on revient sur la même page */
+function uiRestore(){let s=null;try{s=JSON.parse(localStorage.getItem(UIK)||'null');}catch(e){}
+  if(!s||!ME||s.u!==ME.id||!s.v||s.v==='login'||!(Date.now()-s.at<12*36e5))return false;
+  UIR=true;try{DRAFT=s.d||null;DDRAFT=s.dd||null;Q=s.q||'';FIL=s.fil||'tous';FSR=s.fsr||'tous';DEVQ=s.dq||'';
+    let a=s.a??null;if(a&&typeof a==='object'){a={...a};delete a.scan;}VIEW=s.v;ARG=a;render();if(VIEW===s.v)uiApply(s.f);}
+  catch(e){UIR=false;return false;}finally{UIR=false;}
+  const y=+s.y||0;if(y){requestAnimationFrame(()=>window.scrollTo(0,y));setTimeout(()=>window.scrollTo(0,y),250);}uiSave();return true;}
+
 /* ---------- nouvelle commande ---------- */
 let DRAFT=null;
 const newDraft=()=>({interne:false,canal:'Showroom',client:{nom:'',tel:'',ville:'',quartier:''},forme:'U',lg:{fond:'',rg:'',rd:''},vitres:false,zoneId:zonesOk()[0]?.id||'',remise:0,remiseMotif:'',notes:'',sr:srMe(),table:110,acc:{g:{t:'m',w:25,h:50},d:{t:'m',w:25,h:50}},dos:{f:false,g:false,d:false},gue:0,mat:false,tis:false,tisM:''});
@@ -13490,7 +13512,7 @@ const roleLab=u=>u.role==='gerant'?'gérant':u.role==='liv'?'livreur':u.role==='
 const opsDe=k=>S.users.filter(u=>u.role==='op'&&u.actif!==false&&(u.postes||[]).includes(k)).map(u=>u.nom);
 const prodUrl=o=>{const b=(S.settings.url||'').trim()||(location.origin+location.pathname);return b+(b.includes('?')?'&':'?')+'p='+encodeURIComponent(o.code);};
 let PENDP=null;
-function afterLogin(){if(PENDP){const o=parseScan(PENDP);PENDP=null;if(o&&isLiv())return enTour(o)?go('ls',{id:o.id,scan:true}):go('liv');if(o&&o.lotId&&!ME.role.startsWith('vend'))return go('sal',{id:o.id,scan:true});}go(home());}
+function afterLogin(){if(PENDP){const o=parseScan(PENDP);PENDP=null;if(o&&isLiv())return enTour(o)?go('ls',{id:o.id,scan:true}):go('liv');if(o&&o.lotId&&!ME.role.startsWith('vend'))return go('sal',{id:o.id,scan:true});}if(uiRestore())return;go(home());}
 function exOps(){if(!S.users.some(u=>u.role==='liv'))S.users.push({id:uid()+'l',nom:'Abderrazak',tel:'0600000016',pin:'1234',role:'liv',actif:true});if(S.users.some(u=>u.role==='op'))return;[['Abdellatif',['cnc']],['Brahim',['carc']],['Yassine',['tab']],['Youssef',['face','tab']],['Ayoub',['plac']]].forEach((x,i)=>S.users.push({id:uid()+i,nom:x[0],tel:'06000000'+(11+i),pin:'1234',role:'op',actif:true,postes:x[1]}));}
 
 /* ---------- lecture d'un code (QR ou tapé) ---------- */
@@ -14336,7 +14358,7 @@ const Net=(()=>{
 })();
 
 /* ---------- démarrage ---------- */
-function render(){const V={login:vLogin,dash:vDash,list:vList,devis:vDevis,dv:vNew,new:vNew,ord:vOrd,set:vSet,prod:vProd,op:vOp,sal:vSal,tour:vTour,liv:vLiv,ls:vLs};closeScanner();if(ME&&isOp()&&!['op','sal'].includes(VIEW))VIEW='op';if(ME&&isLiv()&&!['liv','ls'].includes(VIEW))VIEW='liv';(V[VIEW]||vLogin)();}
+function render(){const V={login:vLogin,dash:vDash,list:vList,devis:vDevis,dv:vNew,new:vNew,ord:vOrd,set:vSet,prod:vProd,op:vOp,sal:vSal,tour:vTour,liv:vLiv,ls:vLs};closeScanner();if(ME&&isOp()&&!['op','sal'].includes(VIEW))VIEW='op';if(ME&&isLiv()&&!['liv','ls'].includes(VIEW))VIEW='liv';(V[VIEW]||vLogin)();uiSoon();}
 Store.load();
 {const q=new URLSearchParams(location.search),code=q.get('s');PENDP=q.get('p');
  if(code)vSuivi(code);
