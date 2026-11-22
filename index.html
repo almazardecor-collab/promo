@@ -13042,7 +13042,7 @@ function shell(title,sub,body,tabs=true){const f=FLASH;FLASH=null;
   document.getElementById('root').innerHTML=`<div class="app"><header class="top"><h1>${title}${sub?`<small>${sub}</small>`:''}</h1>${ME?`<button class="btn sm" id="bOut">${esc(ME.nom)} · Quitter</button>`:''}</header>
   ${ONLINE?'<div class="demo" id="net" hidden></div>':`<div class="demo">Version d’essai : les données sont enregistrées sur cet appareil seulement${MEM?' (mémoire du navigateur indisponible : elles seront perdues à la fermeture)':''}.</div>`}
   ${f?`<div class="msg ${f.k}" role="status">${esc(f.t)}</div>`:''}${body}</div>
-  ${ME&&tabs?`<nav class="bot${T.length>5?' n6':''}${T.length>6?' n7':''}">${T.map(([v,l])=>`<button data-go="${v}"${VIEW===v?' aria-current="page"':''}>${l}</button>`).join('')}</nav>`:''}`;
+  ${ME&&tabs?`<nav class="bot${T.length>5?' n6':''}${T.length>6?' n7':''}">${T.map(([v,l])=>`<button data-go="${v}"${VIEW===v||(VIEW==='dv'&&v==='devis')?' aria-current="page"':''}>${l}</button>`).join('')}</nav>`:''}`;
   const o=$('bOut');if(o)o.onclick=()=>{if(ONLINE)return Net.logout();ME=null;sessSet(null);go('login');};
   document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go,b.dataset.arg));
   document.querySelectorAll('[data-sal]').forEach(b=>b.onclick=()=>go('sal',{id:b.dataset.sal}));document.querySelectorAll('[data-ls]').forEach(b=>b.onclick=()=>go('ls',{id:b.dataset.ls}));if(ONLINE)Net.rendered();}
@@ -13106,52 +13106,111 @@ function vList(){if(isOp()||isLiv())return go(home());let mine=isG()?S.orders:S.
   document.querySelectorAll('[data-fs]').forEach(b=>b.onclick=()=>{FSR=b.dataset.fs;vList();});
   document.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>go('ord',b.dataset.o));}
 
-/* ---------- devis envoyés par le robot WhatsApp ---------- */
-let DEV=null,DEVQ='',DEVLOAD=false;
-const devTel=t=>{const d=telN(t);return d.length>=9?'0'+d.slice(-9):d;};
-const devOrder=d=>{const t9=telN(d.tel).slice(-9);return S.orders.find(o=>!o.interne&&telN(o.client&&o.client.tel).slice(-9)===t9)||null;};
+/* ---------- devis : robot WhatsApp + devis faits sur place dans l'app ---------- */
+let DEV=null,DEVQ='',DEVLOAD=false,DEVLIV='',DDRAFT=null,DEVMSG=null;
+const devTel=t=>{const d=telN(t);return d.length>=9?'0'+d.slice(-9):'';};
+const devOrder=d=>{const t9=telN(d.tel).slice(-9);return t9.length<9?null:S.orders.find(o=>!o.interne&&telN(o.client&&o.client.tel).slice(-9)===t9)||null;};
+const devEdit=d=>isG()||d.par===ME.id||(!d.par&&!d.test);
+const devDel=d=>isG()||d.par===ME.id;
+const devOpt=c=>{const A=accOf(c),X=[];[['gauche',A.g],['droit',A.d]].forEach(([k,x])=>{if(x.t!=='m')X.push('accoudoir '+k+' '+(x.t==='t'?'tablette':'tiroir'));});
+  if(dosMl(c)>0)X.push('dossier '+dosNom(c));if(gueOf(c))X.push('+ '+gueOf(c)+' guéridon'+(gueOf(c)>1?'s':''));if(matOf(c))X.push('matelas');if(tisOf(c))X.push('tissu'+(tisNom(c)?' '+tisNom(c):''));if(c.vitres)X.push('vitres');if(+c.remise>0)X.push('remise '+dh(+c.remise));return X.join(' · ');};
+const devErr=r=>r.err==='net'?'Pas de connexion : réessaie quand le réseau revient.':r.err==='auth'?'Session terminée : reconnecte-toi.':r.err==='refuse'?'Tu ne peux pas modifier ce devis.':r.err==='remise'?'La remise dépasse le total.':r.err==='calc'?'Les prix ont changé : rouvre le devis puis enregistre de nouveau.':'Devis refusé ('+(r.err||'erreur')+').';
+function devLoad(){if(DEVLOAD)return;DEVLOAD=true;Net.devis().then(r=>{DEVLOAD=false;if(r&&r.ok){DEV=r.devis;DEVLIV=r.liv||'';}else DEV={err:(r&&r.err)||'net'};if(VIEW==='devis')vDevis();});}
 function vDevis(){if(isOp()||isLiv())return go(home());
-  if(!ONLINE){shell('Promo Salon <b>Bois</b>','Devis WhatsApp','<p class="muted">Les devis du robot WhatsApp s’affichent seulement dans la version en ligne.</p>');return;}
-  if(DEV===null&&!DEVLOAD){DEVLOAD=true;Net.devis().then(r=>{DEVLOAD=false;DEV=r&&r.ok?r.devis:{err:(r&&r.err)||'net'};if(VIEW==='devis')vDevis();});}
-  const q=DEVQ.trim().toLowerCase();
+  if(!ONLINE){shell('Promo Salon <b>Bois</b>','Devis','<p class="muted">Les devis s’affichent seulement dans la version en ligne.</p>');return;}
+  if(DEV===null)devLoad();
+  const q=DEVQ.trim().toLowerCase(),msg=DEVMSG;DEVMSG=null;
   const L=Array.isArray(DEV)?DEV.filter(d=>!q||[d.nom,d.tel,devTel(d.tel),d.ville,d.code].join(' ').toLowerCase().includes(q)):[];
   const body=DEV===null?'<p class="muted">Chargement des devis…</p>':!Array.isArray(DEV)?`<div class="msg err">Impossible de charger les devis${DEV.err==='auth'?' : reconnecte-toi.':' : vérifie la connexion.'}</div>`:
-   (L.length?L.map(d=>{const o=devOrder(d),c=d.commande||{},lg=c.lg||{};const cot=[lg.fond,lg.rg,lg.rd].filter(x=>x!==''&&x!=null).join(' / ');
-     return `<div class="card" style="padding:12px;margin-bottom:8px">
-      <div class="l1" style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>${esc(d.nom||'Sans nom')}</b><span>${d.test?'<span class="tag exp">Test</span> ':''}${o?`<span class="tag conf">${esc(o.code)}</span>`:'<span class="tag res">Devis</span>'}</span></div>
-      <div class="muted" style="margin:4px 0">${esc(devTel(d.tel))} · ${esc(d.ville||'—')} · ${fdate(d.at)}</div>
-      <div>Salon ${esc(c.forme||'')} ${esc(cot)} cm${c.table?' · table '+c.table:''}</div>
+   (L.length?L.map(d=>{const o=devOrder(d),c=d.commande||{},lg=c.lg||{};const cot=[lg.fond,lg.rg,lg.rd].filter(x=>x!==''&&x!=null).join(' / '),op=devOpt(c),tel=devTel(d.tel);
+     return `<div class="card" style="padding:12px;margin-bottom:8px" data-dc="${esc(d.id)}">
+      <div class="l1" style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>${esc(d.nom||'Client sans nom')}</b><span>${d.test?'<span class="tag exp">Test</span> ':''}${o?`<span class="tag conf">${esc(o.code)}</span>`:'<span class="tag res">Devis</span>'}</span></div>
+      <div class="muted" style="margin:4px 0">${esc([tel,d.ville].filter(Boolean).join(' · ')||'Sans téléphone')} · ${fdate(d.maj||d.at)}</div>
+      <div class="muted" style="margin:4px 0;font-size:.85rem">${esc(d.code||'')} · ${d.par?'fait par '+esc(d.parNom||'un vendeur'):'Robot WhatsApp'}${d.maj&&!d.par?' · modifié':''}</div>
+      <div>Salon ${esc(c.forme||'')} ${esc(cot)} cm${c.table?' · table '+esc(c.table):''}</div>${op?`<div class="muted" style="font-size:.85rem;margin-top:2px">${esc(op)}</div>`:''}
       <div style="margin:4px 0"><b>${fmt(+d.total)} DH</b> <span class="muted">· acompte ${fmt(+d.acompte)} DH</span></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
-       ${d.url?`<a class="btn sm" href="${esc(d.url)}" target="_blank" rel="noopener">PDF</a>`:''}
-       <a class="btn sm" href="https://wa.me/${telWa(d.tel)}" target="_blank" rel="noopener">WhatsApp</a>
+       ${d.url?`<a class="btn sm" href="${esc(d.url)}" target="_blank" rel="noopener">PDF</a>`:`<button class="btn sm" data-dp="${esc(d.id)}">PDF</button>`}
+       ${tel?`<a class="btn sm" href="https://wa.me/${telWa(d.tel)}?text=${encodeURIComponent('Bonjour'+(d.nom?' '+d.nom:'')+', voici votre devis '+S.settings.marque+' '+(d.code||'')+'.')}" target="_blank" rel="noopener">WhatsApp</a>`:''}
+       ${devEdit(d)?`<button class="btn sm" data-de="${esc(d.id)}">Modifier</button>`:''}
        ${o?`<button class="btn sm" data-o="${o.id}">Voir la commande</button>`:`<button class="btn sm pri" data-dv="${esc(d.id)}">Créer la commande</button>`}
-      </div></div>`;}).join(''):'<p class="muted">Aucun devis envoyé par le robot pour l’instant.</p>');
-  shell('Promo Salon <b>Bois</b>','Devis envoyés sur WhatsApp',`<div style="display:flex;gap:6px;margin-bottom:8px"><input type="text" id="dq" placeholder="Chercher : nom, téléphone, ville" value="${esc(DEVQ)}" aria-label="Chercher un devis" style="flex:1"><button class="btn sm" id="dR" aria-label="Actualiser">↻</button></div>${body}`);
+       ${devDel(d)?`<button class="btn sm bad" data-dx="${esc(d.id)}">Supprimer</button>`:''}
+      </div>${msg&&msg.id===d.id?`<p class="muted" role="status" style="margin:8px 0 0">${esc(msg.t)}</p>`:''}</div>`;}).join(''):`<p class="muted">${q?'Aucun devis ne correspond à la recherche.':'Aucun devis pour l’instant.'}</p>`);
+  shell('Promo Salon <b>Bois</b>','Devis',`<button class="btn pri full" id="dNew" style="margin-bottom:10px">Nouveau devis</button>
+   <div style="display:flex;gap:6px;margin-bottom:8px"><input type="text" id="dq" placeholder="Chercher : nom, téléphone, ville" value="${esc(DEVQ)}" aria-label="Chercher un devis" style="flex:1"><button class="btn sm" id="dR" aria-label="Actualiser">↻</button></div>${body}`);
+  const find=id=>(Array.isArray(DEV)?DEV:[]).find(x=>x.id===id);
+  $('dNew').onclick=()=>{DDRAFT={...newDraft(),devis:{}};go('dv');};
   $('dq').oninput=e=>{DEVQ=e.target.value;const p=e.target.selectionStart;vDevis();const el=$('dq');el.focus();el.setSelectionRange(p,p);};
   $('dR').onclick=()=>{DEV=null;vDevis();};
   document.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>go('ord',b.dataset.o));
-  document.querySelectorAll('[data-dv]').forEach(b=>b.onclick=()=>{const d=(DEV||[]).find(x=>x.id===b.dataset.dv);if(!d)return;const c=JSON.parse(JSON.stringify(d.commande||{})),base=newDraft();
-    DRAFT={...base,...c,interne:false,canal:'WhatsApp',remise:0,remiseMotif:'',notes:(c.notes&&c.notes!=='Réservée par le robot WhatsApp'?c.notes:'')||('Devis WhatsApp '+(d.code||'')),
-      client:{nom:(c.client&&c.client.nom)||d.nom||'',tel:devTel(d.tel),ville:(c.client&&c.client.ville)||d.ville||'',quartier:(c.client&&c.client.quartier)||''},
-      lg:{fond:String((c.lg&&c.lg.fond)||''),rg:String((c.lg&&c.lg.rg)||''),rd:String((c.lg&&c.lg.rd)||'')},sr:isG()?(c.sr||base.sr):base.sr};
-    flash('Commande préremplie depuis le devis WhatsApp : vérifie puis enregistre.');go('new');});}
+  document.querySelectorAll('[data-dp]').forEach(b=>b.onclick=async()=>{const d=find(b.dataset.dp);if(!d)return;const {blob,name}=devisPdf(d);const t=await shareFile(blob,name,'Devis '+(d.code||''));DEVMSG={id:d.id,t:t==='Bon partagé.'?'Devis partagé.':t};const y=window.scrollY;vDevis();window.scrollTo(0,y);});
+  document.querySelectorAll('[data-de]').forEach(b=>b.onclick=()=>{const d=find(b.dataset.de);if(!d)return;DDRAFT=devDraft(d);DDRAFT.devis={id:d.id,code:d.code||''};go('dv');});
+  document.querySelectorAll('[data-dx]').forEach(b=>b.onclick=()=>sur(b,async()=>{const id=b.dataset.dx;b.disabled=true;const r=await Net.devisDel(id);if(r&&r.ok){DEV=DEV.filter(x=>x.id!==id);flash('Devis supprimé.');}else flash(devErr(r||{}),'err');if(VIEW==='devis')vDevis();}));
+  document.querySelectorAll('[data-dv]').forEach(b=>b.onclick=()=>{const d=find(b.dataset.dv);if(!d)return;const c=d.commande||{};
+    DRAFT={...devDraft(d),interne:false,canal:d.par?'Showroom':'WhatsApp',remise:isG()?Math.max(0,+c.remise||0):0,remiseMotif:'',notes:(c.notes&&c.notes!=='Réservée par le robot WhatsApp'?c.notes:'')||('Devis '+(d.code||''))};
+    flash('Commande préremplie depuis le devis : vérifie puis enregistre.'+(DRAFT.remise>0?' La remise demande ton code.':''));go('new');});}
+/* brouillon du formulaire à partir d'un devis enregistré */
+function devDraft(d){const c=JSON.parse(JSON.stringify(d.commande||{})),base=newDraft(),cl=c.client||{};
+  return {...base,forme:['U','L','Droit'].includes(c.forme)?c.forme:'U',table:+c.table===120?120:110,acc:c.acc?accN(c.acc):base.acc,dos:dosN(c.dos),gue:gueN(c.gue),mat:!!c.mat,tis:!!c.tis,tisM:String(c.tisM||''),vitres:!!c.vitres,
+    zoneId:S.settings.zones.some(z=>z.id===c.zoneId)?c.zoneId:base.zoneId,remise:Math.max(0,+c.remise||0),remiseMotif:String(c.remiseMotif||''),notes:String(c.notes||''),
+    client:{nom:cl.nom||d.nom||'',tel:devTel(d.tel||cl.tel),ville:cl.ville||d.ville||'',quartier:cl.quartier||''},
+    lg:{fond:String((c.lg&&c.lg.fond)||''),rg:String((c.lg&&c.lg.rg)||''),rd:String((c.lg&&c.lg.rd)||'')},sr:isG()&&srOf(c)?c.sr:base.sr};}
+/* enregistrement d'un devis (création ou modification) : le serveur recalcule le total */
+async function devSave(d,err){
+  if(!(+d.lg.fond>0))return err('Indique au moins la longueur du fond.');
+  if(cotesMin(d.forme,d.lg))return err(cotesMin(d.forme,d.lg));if(accKo(d.acc))return err(accKo(d.acc));
+  const tn=telN(d.client.tel);if(tn.length&&tn.length<9)return err('Le téléphone est incomplet (ou laisse-le vide).');
+  if(!isG()||!srOf(d))d.sr=srMe();
+  const c={forme:d.forme,lg:{fond:String(d.lg.fond||''),rg:d.forme==='Droit'?'':String(d.lg.rg||''),rd:d.forme==='U'?String(d.lg.rd||''):''},table:+d.table===120?120:110,acc:accN(d.acc),dos:dosF(d.forme,d.dos),gue:gueN(d.gue),
+    mat:!!d.mat,tis:!!d.tis,tisM:d.tis?String(d.tisM||''):'',vitres:!!d.vitres,zoneId:d.zoneId||'',remise:isG()?Math.max(0,Math.round(+d.remise||0)):0,remiseMotif:'',notes:String(d.notes||'').trim(),sr:d.sr,
+    client:{nom:String(d.client.nom||'').trim(),tel:tn.length>=9?String(d.client.tel).trim():'',ville:String(d.client.ville||'').trim(),quartier:String(d.client.quartier||'').trim()}};
+  if(c.remise>0){c.remiseMotif='accordée par le gérant';if(c.remise>=totalOf({...c,remise:0}))return err('La remise dépasse le total.');}
+  const b=$('bSave');b.disabled=true;b.textContent='Enregistrement…';
+  const r=await Net.devisSave({id:d.devis.id||uid(),commande:c,lignes:lignes(c)});
+  if(!r||!r.ok){if(b.isConnected){b.disabled=false;b.textContent='Enregistrer le devis';}if(r&&r.err==='auth')return;return err(devErr(r||{}));}
+  if(Array.isArray(DEV)){DEV=DEV.filter(x=>x.id!==r.devis.id);DEV.unshift(r.devis);}else DEV=null;
+  DDRAFT=null;DEVQ='';DEVMSG={id:r.devis.id,t:'Touche PDF pour l’envoyer au client ou l’imprimer.'};flash('Devis '+r.devis.code+' enregistré.');go('devis');}
+/* PDF du devis, fait sur l'appareil (même contenu que celui du robot) */
+function devisPdf(dv){const {jsPDF}=window.jspdf,d=new jsPDF({unit:'mm',format:'a4'}),st=S.settings,W=210,M=15,o=dv.commande||{},cli=o.client||{};let y=18;
+  const cl=t=>String(t).replace(/[’‘]/g,"'").replace(/[—–]/g,'-').replace(/•/g,'-').replace(/œ/g,'oe').replace(/…/g,'...').replace(/[  ]/g,' ');
+  const T=(t,x,yy,o2={})=>{d.setFont('helvetica',o2.b?'bold':'normal');d.setFontSize(o2.s||10);d.setTextColor(...(o2.c||[29,37,35]));d.text(Array.isArray(t)?t.map(cl):cl(t),x,yy,{align:o2.a||'left'});};
+  const G=[93,105,102],B=[31,95,139],sr=srOf(o)||srList()[0],nom=cli.nom||dv.nom||'',tel=devTel(dv.tel||cli.tel),tot=+dv.total||0,ac=+dv.acompte||0;
+  T(st.marque,M,y,{b:1,s:18,c:B});T('DEVIS',W-M,y,{b:1,s:13,a:'right'});y+=6;
+  T('Showroom '+sr.nom+(sr.adresse?' - '+sr.adresse:''),M,y,{s:9,c:G});T(dv.code||'',W-M,y,{b:1,s:12,a:'right',c:B});y+=4.5;
+  T('WhatsApp : '+st.tel,M,y,{s:9,c:G});T('Date : '+fdate(dv.maj||dv.at||new Date()),W-M,y,{s:9,a:'right',c:G});y+=5;d.setDrawColor(207,214,211);d.line(M,y,W-M,y);y+=8;
+  T('CLIENT',M,y,{b:1,s:8,c:B});y+=5;T(nom||'-',M,y,{b:1,s:12});y+=5.5;if(tel){T('Téléphone : '+tel,M,y);y+=5;}
+  {const v=[cli.ville||dv.ville,cli.quartier].filter(Boolean).join(', ');if(v){T(v,M,y);y+=5;}}y+=4;
+  T('SALON',M,y,{b:1,s:8,c:B});y+=5;const l=o.lg||{},ml=((+l.fond||0)+(+l.rg||0)+(+l.rd||0))/100;
+  T(`Forme ${o.forme||''} - longueurs mur à mur : `+(o.forme==='U'?`fond ${l.fond} cm, retour gauche ${l.rg} cm, retour droit ${l.rd} cm`:o.forme==='L'?`fond ${l.fond} cm, retour ${l.rg} cm`:`${l.fond} cm`),M,y);y+=5;
+  T('Métrage : '+fmt(ml,2)+' ml',M,y);y+=11;
+  d.setFillColor(227,238,246);d.rect(M,y-5,W-2*M,7,'F');T('DÉSIGNATION',M+2,y,{b:1,s:8});T('MONTANT (DH)',W-M-2,y,{b:1,s:8,a:'right'});y+=7;
+  d.setFont('helvetica','normal');d.setFontSize(10);
+  for(const [lab,m] of (dv.lignes||[])){const ls=d.splitTextToSize(cl(lab),135);T(ls,M+2,y);T(fmt(+m),W-M-2,y,{a:'right'});y+=5*ls.length+2;d.line(M,y-3.5,W-M,y-3.5);}
+  y+=3;T('NET À PAYER (sans TVA)',M+2,y,{b:1,s:12});T(dh(tot),W-M-2,y,{b:1,s:12,a:'right',c:B});y+=7;
+  T(`Acompte de ${st.acPct} % à la commande`,M+2,y);T(dh(ac),W-M-2,y,{a:'right'});y+=5.5;
+  T('Solde à la livraison, avant le montage',M+2,y);T(dh(tot-ac),W-M-2,y,{a:'right'});y+=11;
+  T('CONDITIONS',M,y,{b:1,s:8,c:B});y+=5;d.setFont('helvetica','normal');d.setFontSize(9);
+  const C=[];if(DEVLIV)C.push(`Livraison indicative à partir du ${fdate(DEVLIV+'T12:00:00')} : date garantie seulement après versement de l'acompte de ${st.acPct} %.`);
+  C.push(`Réservation gardée ${st.resH} h sans acompte, puis annulée automatiquement.`,"Les cotes exactes sont relevées chez le client après l'acompte ; le prix est recalculé si le métrage change.",`Au-delà de ${fmt(st.mlBase)} ml, tout mètre commencé est compté en entier.`,"Aucune annulation ni remboursement après le versement de l'acompte.",'Finition unique de la promo : noyer avec touches de chêne, plaqué et verni.');
+  if(!o.mat&&!o.tis)C.push('Offre bois seul : sans matelas, sans tissu ni coussins.');
+  for(const c of C){const ls=d.splitTextToSize(cl('- '+c),W-2*M);T(ls,M,y,{s:9,c:G});y+=4.3*ls.length+1;}
+  return {blob:d.output('blob'),name:('Devis-'+(dv.code||'')+'-'+nom.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9]+/g,'-').slice(0,30)).replace(/-+$/,'')+'.pdf'};}
 
 /* ---------- nouvelle commande ---------- */
 let DRAFT=null;
 const newDraft=()=>({interne:false,canal:'Showroom',client:{nom:'',tel:'',ville:'',quartier:''},forme:'U',lg:{fond:'',rg:'',rd:''},vitres:false,zoneId:zonesOk()[0]?.id||'',remise:0,remiseMotif:'',notes:'',sr:srMe(),table:110,acc:{g:{t:'m',w:25,h:50},d:{t:'m',w:25,h:50}},dos:{f:false,g:false,d:false},gue:0,mat:false,tis:false,tisM:''});
 let FSR='tous';
-function vNew(){if(isOp()||isLiv())return go(home());const st=S.settings;if(!DRAFT)DRAFT=newDraft();const d=DRAFT;const plein=actives().length>=st.quota;
+function vNew(){if(isOp()||isLiv())return go(home());const st=S.settings,DV=VIEW==='dv';if(DV&&!ONLINE)return go('devis');if(DV){if(!DDRAFT)DDRAFT={...newDraft(),devis:{}};}else if(!DRAFT)DRAFT=newDraft();const d=DV?DDRAFT:DRAFT;const plein=!DV&&actives().length>=st.quota;
   if(plein&&!isG()){shell('Promo Salon <b>Bois</b>','Nouvelle commande',`<div class="msg err">Les ventes sont fermées : les ${st.quota} salons sont pris.</div>`);return;}
-  if(plein)d.interne=true;if(!isG())d.interne=false;const I=d.interne;
+  if(plein)d.interne=true;if(!isG()||DV)d.interne=false;const I=d.interne;
   const seg=(k,vals,cur)=>`<div class="seg" role="group">${vals.map(v=>`<button type="button" data-seg="${k}" data-v="${esc(v)}" aria-pressed="${cur===v}">${esc(v)}</button>`).join('')}</div>`;
-  shell('Promo Salon <b>Bois</b>',I?'Nouvelle commande showroom':'Nouvelle commande',`${plein?`<div class="msg err">Les ventes sont fermées : les ${st.quota} salons sont pris. Seules les commandes showroom restent possibles.</div>`:''}
-   <div class="card"><h2>${I?'Showroom':'Client'}</h2>${isG()&&!plein?`<label class="f">Type de commande</label>${seg('type',['Client','Showroom (essai)'],I?'Showroom (essai)':'Client')}`:''}
+  shell('Promo Salon <b>Bois</b>',DV?(d.devis.id?'Modifier le devis '+esc(d.devis.code||''):'Nouveau devis'):I?'Nouvelle commande showroom':'Nouvelle commande',`${plein?`<div class="msg err">Les ventes sont fermées : les ${st.quota} salons sont pris. Seules les commandes showroom restent possibles.</div>`:''}
+   <div class="card"><h2>${I?'Showroom':'Client'}</h2>${isG()&&!plein&&!DV?`<label class="f">Type de commande</label>${seg('type',['Client','Showroom (essai)'],I?'Showroom (essai)':'Client')}`:''}
     <label class="f">Point de vente</label>${isG()?`<div class="seg" role="group">${srList().map(x=>`<button type="button" data-sr="${x.id}" aria-pressed="${d.sr===x.id}">Showroom ${esc(x.nom)}</button>`).join('')}</div>`:`<p style="margin:0"><b>${esc(srNom({sr:srMe()}))}</b></p>`}
-    <label class="f" for="cN">${I?'Nom (vide = nom du showroom)':'Nom et prénom'}</label><input type="text" id="cN" value="${esc(d.client.nom)}" autocomplete="off">
-    ${I?`<label class="f" for="cV">Ville</label><input type="text" id="cV" value="${esc(d.client.ville)}"><p class="muted" style="font-size:.85rem;margin:6px 0 0">Commande pour le showroom : sans paiement, hors des ${st.quota} salons de la promo.</p>`:`<label class="f" for="cT">Téléphone WhatsApp</label><input type="tel" id="cT" inputmode="tel" value="${esc(d.client.tel)}">
+    <label class="f" for="cN">${I?'Nom (vide = nom du showroom)':DV?'Nom du client (facultatif)':'Nom et prénom'}</label><input type="text" id="cN" value="${esc(d.client.nom)}" autocomplete="off">
+    ${I?`<label class="f" for="cV">Ville</label><input type="text" id="cV" value="${esc(d.client.ville)}"><p class="muted" style="font-size:.85rem;margin:6px 0 0">Commande pour le showroom : sans paiement, hors des ${st.quota} salons de la promo.</p>`:`<label class="f" for="cT">Téléphone WhatsApp${DV?' (facultatif)':''}</label><input type="tel" id="cT" inputmode="tel" value="${esc(d.client.tel)}">
     <div class="g2"><div><label class="f" for="cV">Ville</label><input type="text" id="cV" value="${esc(d.client.ville)}"></div><div><label class="f" for="cQ">Quartier</label><input type="text" id="cQ" value="${esc(d.client.quartier)}"></div></div>
-    <label class="f">Commande prise par</label>${seg('canal',['Showroom','Live','WhatsApp'],d.canal)}`}</div>
+    ${DV?'':'<label class="f">Commande prise par</label>'+seg('canal',['Showroom','Live','WhatsApp'],d.canal)}`}</div>
    <div class="card"><h2>Salon</h2><label class="f">Forme</label>${seg('forme',['U','L','Droit'],d.forme)}
      <label class="f">Grande table (même prix)</label><div class="seg" role="group">${[110,120].map(v=>`<button type="button" data-tb="${v}" aria-pressed="${(+d.table===120?120:110)===v}">Ø ${v} cm</button>`).join('')}</div>
      ${[['g','gauche'],['d','droit']].map(([c,lab])=>{const x=d.acc[c];return `<label class="f">Accoudoir ${lab}</label><div class="seg" role="group">${[['m','Mince'],['t','Tablette'],['r','Tiroir']].map(([v,l])=>`<button type="button" data-ac="${c}" data-v="${v}" aria-pressed="${x.t===v}">${l}</button>`).join('')}</div>${x.t==='m'?'':`<div class="g2" style="max-width:420px">${x.t==='t'?`<div><label class="f" for="aW${c}">Largeur (12 à 30 cm)</label><input type="number" class="num" id="aW${c}" inputmode="numeric" min="12" max="30" value="${esc(x.w)}"></div>`:''}<div><label class="f" for="aH${c}">${x.t==='r'?'Hauteur du box':'Hauteur'} (${ACH[x.t][0]} à ${ACH[x.t][1]} cm)</label><input type="number" class="num" id="aH${c}" inputmode="numeric" min="${ACH[x.t][0]}" max="${ACH[x.t][1]}" value="${esc(x.h===undefined?ACD[x.t]:x.h)}"></div></div><p class="muted" style="font-size:.85rem;margin:4px 0 0">${x.t==='r'?'Tiroir : largeur 30 cm. Hauteur du box seul, au-dessus de la banquette.':'Hauteur du dessus depuis le sol.'} La profondeur suit la banquette.</p>`}`;}).join('')}
@@ -13169,12 +13228,13 @@ function vNew(){if(isOp()||isLiv())return go(home());const st=S.settings;if(!DRA
     ${I?'':'<p class="muted" style="font-size:.85rem;margin:6px 0 0">Les cotes exactes seront relevées chez le client. Le prix est recalculé si le métrage change. Au-delà du métrage compris, tout mètre commencé est compté en entier.</p>'}</div>
    ${I?`<div class="card"><h2>Remarques</h2><textarea id="oN" rows="2" aria-label="Remarques">${esc(d.notes)}</textarea></div>`:`<div class="card"><h2>Options</h2><label class="row" style="min-height:44px"><input type="checkbox" id="oV" ${d.vitres?'checked':''} style="width:22px;height:22px"> Vitres de protection, table + 2 guéridons (${dh(st.pVit)})</label>
     <label class="f" for="oZ">Transport</label><select id="oZ">${st.zones.filter(z=>!z.off||z.id===d.zoneId).map(z=>`<option value="${z.id}" ${d.zoneId===z.id?'selected':''}>${esc(z.nom)} — ${+z.prix?dh(z.prix):'compris'}</option>`).join('')}</select>
-    <div class="g2"><div><label class="f" for="oR">Remise (DH)</label><input type="number" class="num" id="oR" inputmode="numeric" value="${d.remise||''}"></div><div><label class="f" for="oP">Code du gérant</label><input type="password" id="oP" inputmode="numeric" maxlength="4" placeholder="pour une remise"></div></div>
+    ${DV?(isG()?`<div style="max-width:240px"><label class="f" for="oR">Remise (DH)</label><input type="number" class="num" id="oR" inputmode="numeric" value="${d.remise||''}"></div>`:''):`<div class="g2"><div><label class="f" for="oR">Remise (DH)</label><input type="number" class="num" id="oR" inputmode="numeric" value="${d.remise||''}"></div><div><label class="f" for="oP">Code du gérant</label><input type="password" id="oP" inputmode="numeric" maxlength="4" placeholder="pour une remise"></div></div>`}
     <label class="f" for="oN">Remarques</label><textarea id="oN" rows="2">${esc(d.notes)}</textarea></div>
    <div class="card"><h2>Prix</h2><div id="sum"></div></div>`}<p id="nE" class="msg err" hidden></p>
    ${I?'':'<div class="sum" id="bar" aria-live="polite"></div>'}
-   <button class="btn pri full" id="bSave" style="margin-top:10px">${I?'Enregistrer la commande showroom':'Enregistrer la réservation'}</button>`);
-  const rd=()=>{d.client.nom=$('cN').value;d.client.ville=$('cV').value;if(!I){d.client.tel=$('cT').value;d.client.quartier=$('cQ').value;d.vitres=$('oV').checked;d.zoneId=$('oZ').value;d.remise=Math.max(0,+$('oR').value||0);}
+   <button class="btn pri full" id="bSave" style="margin-top:10px">${DV?'Enregistrer le devis':I?'Enregistrer la commande showroom':'Enregistrer la réservation'}</button>${DV?'<button class="btn full" id="bDvX" style="margin-top:8px">Annuler</button>':''}`);
+  if($('bDvX'))$('bDvX').onclick=()=>{DDRAFT=null;go('devis');};
+  const rd=()=>{d.client.nom=$('cN').value;d.client.ville=$('cV').value;if(!I){d.client.tel=$('cT').value;d.client.quartier=$('cQ').value;d.vitres=$('oV').checked;d.zoneId=$('oZ').value;d.remise=$('oR')?Math.max(0,+$('oR').value||0):0;}
     d.lg={fond:$('lF').value,rg:d.forme==='Droit'?'':$('lG').value,rd:d.forme==='U'?$('lD').value:''};d.notes=$('oN').value;['g','d'].forEach(c=>{if($('aW'+c))d.acc[c].w=$('aW'+c).value;if($('aH'+c))d.acc[c].h=$('aH'+c).value;});if($('oG'))d.gue=gueN($('oG').value);if($('oM')){d.mat=$('oM').checked;d.tis=$('oT').checked;d.tisM=d.tis?($('oTm')?$('oTm').value:(tissusL()[0]||'')):'';}d.dos=dosF(d.forme,d.dos);};
   const sm=()=>{rd();if(I)return;const L=lignes(d),t=totalOf(d);$('sum').innerHTML=`<table><tbody>${L.map(([l,m])=>`<tr><td>${esc(l)}</td><td class="n">${fmt(m)}</td></tr>`).join('')}
     <tr class="tot"><td>Total (${fmt(mlOf(d),2)} ml)</td><td class="n">${dh(t)}</td></tr><tr><td>Acompte de ${st.acPct} % pour confirmer</td><td class="n">${dh(acDu(d))}</td></tr></tbody></table>`;
@@ -13183,6 +13243,7 @@ function vNew(){if(isOp()||isLiv())return go(home());const st=S.settings;if(!DRA
   document.querySelectorAll('[data-sr]').forEach(b=>b.onclick=()=>{rd();d.sr=b.dataset.sr;vNew();});
   document.querySelectorAll('[data-seg]').forEach(b=>b.onclick=()=>{rd();if(b.dataset.seg==='type')d.interne=b.dataset.v!=='Client';else d[b.dataset.seg]=b.dataset.v;vNew();});document.querySelectorAll('[data-tb]').forEach(b=>b.onclick=()=>{rd();d.table=+b.dataset.tb;vNew();});document.querySelectorAll('[data-ac]').forEach(b=>b.onclick=()=>{rd();const x=d.acc[b.dataset.ac];if(x.t!==b.dataset.v){x.t=b.dataset.v;x.h=ACD[x.t]||50;}vNew();});['g','d'].forEach(c=>{if($('aW'+c))$('aW'+c).addEventListener('input',sm);if($('aH'+c))$('aH'+c).addEventListener('input',sm);});document.querySelectorAll('[data-ds]').forEach(b=>b.onclick=()=>{rd();d.dos={...dosN(d.dos),[b.dataset.ds]:!dosN(d.dos)[b.dataset.ds]};vNew();});if($('oG'))$('oG').onchange=()=>{rd();vNew();};['oM','oT','oTm'].forEach(i=>{if($(i))$(i).onchange=()=>{rd();vNew();};});sm();
   $('bSave').onclick=async()=>{rd();const GP=$('oP')?$('oP').value.trim():'';const e=$('nE'),err=t=>{e.textContent=t;e.hidden=false;e.scrollIntoView({block:'center'});};
+    if(DV)return devSave(d,err);
     if(!isG()||!srOf(d))d.sr=srMe();if(I&&!d.client.nom.trim())d.client.nom=srNom(d);if(I&&!d.client.ville.trim())d.client.ville=srOf(d).nom;
     if(!d.client.nom.trim())return err(I?'Le nom du showroom est obligatoire.':'Le nom du client est obligatoire.');if(!I&&telN(d.client.tel).length<9)return err('Le téléphone WhatsApp du client est obligatoire.');
     if(!(+d.lg.fond>0))return err('Indique au moins la longueur du fond.');
@@ -14241,7 +14302,7 @@ const Net=(()=>{
   function lost(){token=null;ME=null;wipe();saveCache();flash('Session terminée : reconnecte-toi.','err');go('login');}
 
   /* --- écran --- */
-  function safe(){if(['new','login'].includes(VIEW)||SCAN||dirty)return false;const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return false;return !document.querySelector('[data-armed],[data-sur]');}
+  function safe(){if(['new','dv','login'].includes(VIEW)||SCAN||dirty)return false;const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return false;return !document.querySelector('[data-armed],[data-sur]');}
   function redraw(){stale=false;const y=window.scrollY;render();window.scrollTo(0,y);}
   function status(){const el=document.getElementById('net');if(!el)return;const n=token?changes().length:0;
     el.hidden=!off;el.textContent=off?'Hors connexion'+(n?' : '+n+' changement'+(n>1?'s':'')+' en attente, envoyé'+(n>1?'s':'')+' au retour du réseau.':' : les données affichées sont celles de la dernière connexion.'):n?'Envoi en cours…':'';}
@@ -14269,12 +14330,13 @@ const Net=(()=>{
   async function photo(data,orderId,kind){const id='ph'+uid()+Math.random().toString(36).slice(2,8),r=await rpc('psb_photo_put',{p_token:token,p_id:id,p_order:orderId,p_kind:kind,p_data:data});if(!r.ok)throw new Error(r.err||'err');PH[id]=data;return 'ph:'+id;}
   async function reset(){try{const r=await rpc('psb_push',{p_token:token,p_changes:[{k:'reset'}],p_gpin:null});if(!r.ok||!(r.res[0]||{}).ok)return false;S.orders.length=0;S.lots.length=0;tours().length=0;BASE.orders={};BASE.lots={};BASE.tours={};saveCache();flush();return true;}catch(e){return false;}}
   async function suivi(code,k4){try{return await rpc('psb_suivi',{p_code:code,p_k4:k4});}catch(e){return {err:'net'};}}
+  async function dv(fn,args){if(!token)return {err:'auth'};try{const r=await rpc(fn,{p_token:token,...args});if(r&&r.err==='auth')lost();return r||{err:'err'};}catch(e){return {err:'net'};}}
   const img=v=>!v?'':v.startsWith('ph:')?(PH[v.slice(3)]?`src="${PH[v.slice(3)]}"`:`src="${BLANK}" data-ph="${esc(v.slice(3))}"`):`src="${v}"`;
-  return {devis:async()=>{if(!token)return {err:'auth'};try{return await rpc('psb_devis_list',{p_token:token});}catch(e){return {err:'net'};}},login,setup,logout,start,create,photo,reset,suivi,img,rendered,flush,needSetup:()=>!!bootInfo.setup,_dbg:()=>({since,off,busy,pending:changes(),BASE})};
+  return {devis:()=>dv('psb_devis_list',{}),devisSave:d=>dv('psb_devis_save',{p_devis:d}),devisDel:id=>dv('psb_devis_del',{p_id:id}),login,setup,logout,start,create,photo,reset,suivi,img,rendered,flush,needSetup:()=>!!bootInfo.setup,_dbg:()=>({since,off,busy,pending:changes(),BASE})};
 })();
 
 /* ---------- démarrage ---------- */
-function render(){const V={login:vLogin,dash:vDash,list:vList,devis:vDevis,new:vNew,ord:vOrd,set:vSet,prod:vProd,op:vOp,sal:vSal,tour:vTour,liv:vLiv,ls:vLs};closeScanner();if(ME&&isOp()&&!['op','sal'].includes(VIEW))VIEW='op';if(ME&&isLiv()&&!['liv','ls'].includes(VIEW))VIEW='liv';(V[VIEW]||vLogin)();}
+function render(){const V={login:vLogin,dash:vDash,list:vList,devis:vDevis,dv:vNew,new:vNew,ord:vOrd,set:vSet,prod:vProd,op:vOp,sal:vSal,tour:vTour,liv:vLiv,ls:vLs};closeScanner();if(ME&&isOp()&&!['op','sal'].includes(VIEW))VIEW='op';if(ME&&isLiv()&&!['liv','ls'].includes(VIEW))VIEW='liv';(V[VIEW]||vLogin)();}
 Store.load();
 {const q=new URLSearchParams(location.search),code=q.get('s');PENDP=q.get('p');
  if(code)vSuivi(code);
