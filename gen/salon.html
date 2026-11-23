@@ -892,8 +892,9 @@ function build0b(P){
       if(rg&&!asS)W.push(`Accoudoir ${sd} posé sur le coffre : l’abattant situé dessous ne s’ouvre plus sur ${Wd} mm.`);}}
 
   /* ----- matelas d'assise : du mur (plinthe comprise) à l’avant des faces ; jeu jm seulement en longueur (bouts, accoudoirs, face inclinée), angle incliné = 1 pièce carrée à pan coupé ----- */
-  const mats=[];{const jm=Math.max(0,+P.jm||0),Dm=Pd,Lm=Math.max(300,P.Lmat);
-    const tG=acc.G?acc.G.occ:(P.endG?ef:0),tD=acc.D?acc.D.occ:(P.endD?ef:0),wG=tG>0?tG+jm:0,wD=tD>0?tD+jm:0,S=Pd+c;
+  /* dMF (promo, matelas à face bombée) : le matelas déborde de dMF devant le bois, sur les faces droites et sur la face inclinée (décalée de dMF) */
+  const mats=[];{const jm=Math.max(0,+P.jm||0),dF=Math.max(0,+P.dMF||0),Dm=Pd+dF,Lm=Math.max(300,P.Lmat);
+    const tG=acc.G?acc.G.occ:(P.endG?ef:0),tD=acc.D?acc.D.occ:(P.endD?ef:0),wG=tG>0?tG+jm:0,wD=tD>0?tD+jm:0,S=Pd+c+(Math.SQRT2-1)*dF;
     const tP=P._tP||0,pb=fr=>tP&&(fr===BR.B?(P._plAll||!P.dosB):fr===BR.L?(P._plAll||!P.dosL):(P._plAll||!P.dosR))?tP:0,xS=hasL?(tP&&(P._plAll||!P.dosL)?tP:0):(tP&&!P.endG?tP:0),xE=hasR?(tP&&(P._plAll||!P.dosR)?tP:0):(tP&&!P.endD?tP:0),fG=!P.endG&&tP?tP:0,fD=!P.endD&&tP?tP:0;
     const run=(fr,u0,u1,nm,ends)=>{const L=u1-u0;if(L<150)return;const n=Math.max(1,Math.ceil(L/Lm-1e-9)),lc=L/n,b0=pb(fr);
       for(let k=0;k<n;k++){const a=u0+k*lc,b=a+lc;const poly=[W3(fr,a,-b0),W3(fr,b,-b0),W3(fr,b,Dm),W3(fr,a,Dm)].map(q=>[q[0],q[1]]);mats.push({nm,poly,w:lc,l:Dm+b0,rect:1,fr,u0:a,u1:b});}};
@@ -902,7 +903,7 @@ function build0b(P){
     run(BR.B,hasL?(inc?S+cp(-dG):-xS):(wG||-xS),hasR?(inc?L2-S-cp(-dD):L2+xE):(wD?L2-wD:L2+xE),'Matelas — fond');
     if(hasL)run(BR.L,inc?S+cp(dG):Dm,wG?L1-wG:L1+fG,'Matelas — retour gauche');
     if(hasR)run(BR.R,inc?S+cp(dD):Dm,wD?L3-wD:L3+fD,'Matelas — retour droit');
-    if(inc)for(const K of corners){const K2=2*Pd+c,t=K2-S;const Pt=(p,q)=>[K.Wc[0]+K.a[0]*p+K.b[0]*q,K.Wc[1]+K.a[1]*p+K.b[1]*q];
+    if(inc)for(const K of corners){const t=Dm;const Pt=(p,q)=>[K.Wc[0]+K.a[0]*p+K.b[0]*q,K.Wc[1]+K.a[1]*p+K.b[1]*q];
       const p0=-(K.id==='AN1'?xS:xE),q0=-pb(BR.B),d=K.id==='AN1'?dG:dD,pE=S+cp(-d),qE=S+cp(d);
       const loc=[[p0,q0],[pE,q0],[pE,t]];if(pE>S+0.5)loc.push([S,t]);loc.push([t,S]);if(qE>S+0.5)loc.push([t,qE]);loc.push([p0,qE]);
       mats.push({nm:'Matelas d’angle (carré à pan coupé)',poly:loc.map(q=>Pt(q[0],q[1])),loc:loc.map(q=>[q[0]-p0,q[1]-q0]),w:pE-p0,l:qE-q0,pan:S-t,rect:0});}
