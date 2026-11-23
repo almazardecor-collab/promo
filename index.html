@@ -13375,6 +13375,7 @@ function vSet(){if(!isG())return go('list');const st=S.settings;
    <div class="card"><h2>Livraison</h2><div class="g2">${num('capCam','Salons par camion (maximum conseillé)','salons')}</div><p class="muted" style="font-size:.85rem;margin:8px 0 0">Les salons prêts sont regroupés en tournées. Contrôle et regroupement du voyage la veille, solde encaissé avant le montage, photo du salon monté à la fin.</p></div>
    <div class="card"><h2>Délais</h2><p class="muted" style="font-size:.85rem;margin:0 0 6px">Jours travaillés : du lundi au samedi (le samedi, la journée finit à 15 h). Chaque étape doit être finie tant de jours travaillés après le lancement du lot. Les lots déjà lancés gardent leurs dates.</p>
     <div class="g2">${STEPS.map(x=>`<div><label class="f" for="d_${x.k}">${x.lab} (jours)</label><input type="number" class="num" id="d_${x.k}" data-del="${x.k}" min="1" max="60" step="1" value="${delSet()[x.k]}"></div>`).join('')}${num('relJ','Relevé des cotes après l’acompte (jours)','jours')}</div></div>
+   <div class="card"><h2>Panneaux reçus</h2><p class="muted" style="font-size:.85rem;margin:0 0 6px">Format des plaques de l’arrivage, en cm. Il sert aux prochains lots ; le format d’un lot déjà lancé se change dans Production.</p>${panForm(panSet(),'sp',false)}</div>
    <div class="card"><h2>Achats par salon</h2><div class="g2">${num('barre','Barres de face reçues (cm)','cm')}${num('plCh','Chutes de placage (%)','%')}${num('colleKg','Colle de placage par salon (kg)','kg')}${num('blancheKg','Colle blanche à bois par salon (kg)','kg')}${num('sintoKg','Sintofer de rebouchage par salon (kg)','kg')}${num('patinsT','Patins de table et guéridons par salon','patins')}</div></div>
    <div class="card"><h2>Programmes CNC</h2><label class="f" for="s_att">Attaches sur les pièces (pour qu’elles ne sautent pas)</label><select id="s_att"><option value="p" ${st.att!==0&&st.att!==1?'selected':''}>Seulement sur les petites pièces</option><option value="1" ${st.att===1?'selected':''}>Sur toutes les pièces</option><option value="0" ${st.att===0?'selected':''}>Aucune attache</option></select>
     <div id="attP" ${st.att===0||st.att===1?'hidden':''}><label class="f" for="s_attS">Petite pièce = moins de (cm²)</label><div class="inl"><input type="number" class="num" id="s_attS" inputmode="numeric" min="50" step="50" value="${st.att>=50?st.att:300}"><span class="muted">cm² — ou moins de 6 cm de large</span></div></div>
@@ -13400,6 +13401,7 @@ function vSet(){if(!isG())return go('list');const st=S.settings;
     document.querySelectorAll('[data-tis]').forEach(el=>el.onchange=()=>{const L=tissusL(st);L[+el.dataset.tis]=el.value;tisSave(L);});
     document.querySelectorAll('[data-tisd]').forEach(b=>b.onclick=()=>sur(b,()=>{const L=tissusL(st);L.splice(+b.dataset.tisd,1);tisSave(L);}));
     if($('tisAdd'))$('tisAdd').onclick=()=>{const v=$('tisN').value.trim();if(!v){flash('Écris le nom du tissu à ajouter.','err');return;}if(tissusL(st).some(x=>x.toLowerCase()===v.toLowerCase())){flash('Ce tissu est déjà dans la liste.','err');return;}tisSave([...tissusL(st),v]);};}
+  document.querySelectorAll('[id^="sp_c"]').forEach(el=>el.onchange=()=>{const p=panRead('sp'),ko=panKo(p,[]);if(ko){flash(ko,'err');return vSet();}st.pan=p;Store.save();flash('Panneaux : '+panTxt(p)+' cm, pour les prochains lots.');const y=window.scrollY;vSet();window.scrollTo(0,y);});
   document.querySelectorAll('[data-k]').forEach(el=>el.onchange=()=>{const k=el.dataset.k;st[k]=el.type==='number'?(+el.value||0):el.value;Store.save();});
   document.querySelectorAll('[data-z]').forEach(el=>el.onchange=()=>{st.zones[+el.dataset.z][el.dataset.zk]=el.dataset.zk==='prix'?(+el.value||0):el.value;Store.save();});
   document.querySelectorAll('[data-zd]').forEach(b=>b.onclick=()=>sur(b,()=>{const z=st.zones[+b.dataset.zd];if(zonesOk().length<2){flash('Il faut garder au moins une zone de transport.','err');return vSet();}
@@ -13462,6 +13464,17 @@ const bloque=o=>pbOuverts(o).length>0;
 const visa=o=>!!(o.prod&&o.prod.ok),attVisa=o=>done(o,'emb')&&!visa(o),pret=o=>done(o,'emb')&&visa(o);
 const nbDone=o=>stepsOf(o).filter(s=>done(o,s.k)).length;
 const lotOf=o=>S.lots.find(l=>l.id===o.lotId)||null;
+/* format des panneaux (cm, longueur × largeur) : réglé selon l'arrivage dans les Réglages, gardé dans chaque lot à son lancement */
+const PAN0={c15:[244,122],c3:[300,122]};
+const panN=p=>{const n=(a,d)=>Array.isArray(a)&&a.length===2&&a.every(v=>+v>0)?[Math.round(+a[0]),Math.round(+a[1])]:d.slice();p=p||{};return {c15:n(p.c15,PAN0.c15),c3:n(p.c3,PAN0.c3)};};
+const panSet=()=>panN(S.settings.pan),panOf=o=>{const l=o&&o.lotId?lotOf(o):null;return l?panN(l.pan):panSet();};
+const panTxt=p=>'CP 15 '+p.c15[1]+' × '+p.c15[0]+' · CP 3 '+p.c3[1]+' × '+p.c3[0];
+const panKo=(p,O)=>{const ok=(v,a,b)=>v>=a&&v<=b;
+  if(![p.c15[0],p.c3[0]].every(v=>ok(v,200,320)))return 'Longueur des panneaux : entre 200 et 320 cm.';if(![p.c15[1],p.c3[1]].every(v=>ok(v,100,160)))return 'Largeur des panneaux : entre 100 et 160 cm.';
+  if(p.c15[1]<113)return 'CP 15 trop étroit : la table Ø 110 demande au moins 113 cm de large.';
+  if(p.c15[1]<122&&(O||[]).some(o=>!o.annule&&tableOf(o)===120))return 'CP 15 trop étroit pour la table Ø 120 de ce lot : il faut au moins 122 cm de large.';return '';};
+const panForm=(p,k,dis)=>`<div class="g2">${[['c15',0,'CP 15 — longueur'],['c15',1,'CP 15 — largeur'],['c3',0,'CP 3 — longueur'],['c3',1,'CP 3 — largeur']].map(([m,i,l])=>`<div><label class="f" for="${k}_${m}_${i}">${l} (cm)</label><input type="number" class="num" id="${k}_${m}_${i}" inputmode="numeric" min="${i?100:200}" max="${i?160:320}" value="${p[m][i]}"${dis?' disabled':''}></div>`).join('')}</div>`;
+const panRead=k=>{const v=(m,i)=>Math.round(+$(k+'_'+m+'_'+i).value||0);return {c15:[v('c15',0),v('c15',1)],c3:[v('c3',0),v('c3',1)]};};
 const enProd=()=>S.orders.filter(o=>o.lotId&&!o.annule&&lotOf(o));
 /* ----- délais : jours travaillés du lundi au samedi ; le samedi, la journée finit à 15 h ----- */
 const DELDEF={cnc:2,carc:4,tab:4,face:5,plac:6,vern:9,mat:5,tap:9,emb:10};
@@ -13566,15 +13579,15 @@ function facesOf(o){const l=lgOf(o),F=(+l.fond||0)*10,G=(+l.rg||0)*10,D=(+l.rd||
 function barresDe(o,L){const P=[];facesOf(o).forEach(l=>{const n=Math.max(1,Math.ceil((l+10)/L));for(let i=0;i<n;i++)P.push(Math.round(l/n));});P.sort((a,b)=>b-a);const B=[];
   for(const q of P){let b=B.find(x=>x.reduce((t,y)=>t+y+10,0)+q<=L);if(!b){b=[];B.push(b);}b.push(q);}return B.length;}
 function achats(O,lot){const st=S.settings,n=O.length,L=(+(lot&&lot.barre)||+st.barre||250),nb=O.reduce((t,o)=>t+barresDe(o,L*10),0),k=1+(+st.plCh||0)/100,
-   mf=O.reduce((t,o)=>t+facesOf(o).reduce((a,x)=>a+x,0)/1000,0),np=O.reduce((t,o)=>t+(Fab.calOk(o)?o.prod.fab.cal.n:7+(accTag(o)?1:0)+dosSides(o)+gueOf(o)),0),nX3=O.reduce((t,o)=>t+((o.prod&&o.prod.fab&&o.prod.fab.x3)||0),0),nGx=O.reduce((t,o)=>t+gueOf(o),0),mDos=O.reduce((t,o)=>t+dosMl(o),0),nDs=O.reduce((t,o)=>t+dosSides(o),0),ne=O.filter(o=>!Fab.calOk(o)).length,n120=O.filter(o=>tableOf(o)===120).length,AX=O.flatMap(o=>{const a=accOf(o);return [a.g,a.d];}).filter(x=>x.t!=='m'),nTir=AX.filter(x=>x.t==='r').length,noy=(PLQ.noy*n+0.19*n120+AX.reduce((t,x)=>{const ha=accTop(x)/100-0.1175;return t+x.w/100*(0.736+2*ha)+1.472*ha-0.683;},0)+0.59*mDos+0.13*nDs+0.6*nGx+PLQ.bande*mf)*k,che=(PLQ.che*n+0.12*nGx+PLQ.arc*mf)*k,lg=O.filter(o=>mlOf(o)>10.2).length,
+   mf=O.reduce((t,o)=>t+facesOf(o).reduce((a,x)=>a+x,0)/1000,0),pn=lot?panN(lot.pan):panSet(),est=Math.ceil(7*244*122/(pn.c15[0]*pn.c15[1])-0.05),np=O.reduce((t,o)=>t+(Fab.calOk(o)?o.prod.fab.cal.n:est+(accTag(o)?1:0)+dosSides(o)+gueOf(o)),0),nX3=O.reduce((t,o)=>t+((o.prod&&o.prod.fab&&o.prod.fab.x3)||0),0),n3=O.reduce((t,o)=>{const f=o.prod&&o.prod.fab;return t+(f&&f.n3?f.n3:1+((f&&f.x3)||0));},0),nGx=O.reduce((t,o)=>t+gueOf(o),0),mDos=O.reduce((t,o)=>t+dosMl(o),0),nDs=O.reduce((t,o)=>t+dosSides(o),0),ne=O.filter(o=>!Fab.calOk(o)).length,n120=O.filter(o=>tableOf(o)===120).length,AX=O.flatMap(o=>{const a=accOf(o);return [a.g,a.d];}).filter(x=>x.t!=='m'),nTir=AX.filter(x=>x.t==='r').length,noy=(PLQ.noy*n+0.19*n120+AX.reduce((t,x)=>{const ha=accTop(x)/100-0.1175;return t+x.w/100*(0.736+2*ha)+1.472*ha-0.683;},0)+0.59*mDos+0.13*nDs+0.6*nGx+PLQ.bande*mf)*k,che=(PLQ.che*n+0.12*nGx+PLQ.arc*mf)*k,lg=O.filter(o=>mlOf(o)>10.2).length,
    kg=(v,nom)=>+v>0?`${nom} : <b>${fmt(v*n,Number.isInteger(Math.round(v*n*100)/10)?1:2)} kg</b>`:`${nom} : <span class="warn">à régler</span>`,
    Q=O.reduce((t,o)=>{const q=(o.prod&&o.prod.fab&&o.prod.fab.q)||QUI[o.forme]||QUI.U;for(const k in q)t[k]=(t[k]||0)+q[k];return t;},{}),pt=Math.max(0,+st.patinsT||0)*n+Math.ceil(Math.max(0,+st.patinsT||0)/3)*O.reduce((t,o)=>t+gueOf(o),0);
-  return `<table class="ach"><tbody><tr><td><b>Panneaux</b></td><td>CP 15 (122 × 244) : <b>${np} plaques</b>${ne&&ONLINE?` <span class="muted">(${ne} salon${ne>1?'s':''} à 7 en attendant le calepinage)</span>`:''}<br>CP 3 (122 × 300) : <b>${n+nX3} plaque${n+nX3>1?'s':''}</b>${nX3?` <span class="muted">(dont ${nX3} pour les dossiers et les guéridons en plus)</span>`:''}</td></tr>
+  return `<table class="ach"><tbody><tr><td><b>Panneaux</b></td><td>CP 15 (${pn.c15[1]} × ${pn.c15[0]}) : <b>${np} plaques</b>${ne&&ONLINE?` <span class="muted">(${ne} salon${ne>1?'s':''} à ${est} en attendant le calepinage)</span>`:''}<br>CP 3 (${pn.c3[1]} × ${pn.c3[0]}) : <b>${n3} plaque${n3>1?'s':''}</b>${nX3&&n3===n+nX3?` <span class="muted">(dont ${nX3} pour les dossiers et les guéridons en plus)</span>`:''}</td></tr>
    <tr><td><b>Bois massif</b></td><td>Barres 8 × 4 de ${fmt(L)} cm : <b>${nb} barres</b><br><span class="muted">${fmt(mf,1)} m de faces</span></td></tr>
    <tr><td><b>Placage</b></td><td>Noyer : <b>${fmt(noy,1)} m²</b><br>Chêne : <b>${fmt(che,1)} m²</b><br><span class="muted">chutes de ${fmt(+st.plCh||0)} % comprises${n120?' · '+n120+' table'+(n120>1?'s':'')+' Ø 120':''}${AX.length?' · '+AX.length+' accoudoir'+(AX.length>1?'s':'')+' tablette ou tiroir':''}${mDos?' · '+fmt(mDos,1)+' m de dossier':''}${nGx?' · '+nGx+' guéridon'+(nGx>1?'s':'')+' en plus':''}</span></td></tr>
    <tr><td><b>Colles et Sintofer</b></td><td>${kg(st.colleKg,'Colle de placage')}<br>${kg(st.blancheKg,'Colle blanche à bois')}<br>${kg(st.sintoKg,'Sintofer de rebouchage')}</td></tr>
    <tr><td><b>Quincaillerie</b></td><td>${nTir?`Coulisses Tandem sous caisson NL 500 (accoudoirs à tiroir) : <b>${nTir} paire${nTir>1?'s':''}</b><br>`:''}Vérins M8 : <b>${Q.ver}</b><br>Inserts M8 : <b>${Q.ver+QTAB.insM8*n+8*nGx}</b> <span class="muted">(vérins + plateaux)</span><br>Vis M8 des plateaux : <b>${QTAB.visM8*n+8*nGx}</b><br>Inserts M6 + vis M6 × 30 : <b>${Q.m6}</b><br>Vis à bois 4 × 30 : <b>${Q.v30}</b><br>Vis à bois 4 × 40 : <b>${Q.v40}</b><br>Patins feutre des caisses : <b>${Q.feu}</b><br>Patins de table et guéridons : <b>${pt}</b></td></tr></tbody></table>
-   <p class="muted" style="font-size:.85rem;margin:6px 0 0">Une ligne par déplacement. Plaques CP 15 : ${ONLINE?'nombre du calepinage de chaque salon (7 tant qu’il n’est pas calculé)':'base du prototype de 10,2 ml'}.${lg&&ne?' '+lg+' salon(s) de plus de 10,2 ml : attendre le calepinage pour commander.':''} Placage : surfaces du modèle (accoudoirs sur les 2 joues, dessus et chants des plateaux, dessous non compté). Quincaillerie : quantités du modèle selon la forme du salon (U, L ou droit). Emballage pas encore compté.</p>`;}
+   <p class="muted" style="font-size:.85rem;margin:6px 0 0">Une ligne par déplacement. Plaques CP 15 : ${ONLINE?'nombre du calepinage de chaque salon (${est} tant qu’il n’est pas calculé)':'base du prototype de 10,2 ml'}.${lg&&ne?' '+lg+' salon(s) de plus de 10,2 ml : attendre le calepinage pour commander.':''} Placage : surfaces du modèle (accoudoirs sur les 2 joues, dessus et chants des plateaux, dessous non compté). Quincaillerie : quantités du modèle selon la forme du salon (U, L ou droit). Emballage pas encore compté.</p>`;}
 
 /* ---------- production (gérant) ---------- */
 function vProd(){if(!isG())return go(home());const C=aLancer(),n=Math.min(C.length,Math.max(1,S.settings.rythme)),num=S.lots.reduce((m,l)=>Math.max(m,l.num),0)+1,dl0=delaisLot(new Date(),delSet()),dflt=dl0.emb,bar0=(S.lots.length&&+S.lots[S.lots.length-1].barre)||+S.settings.barre||250;
@@ -13582,6 +13595,7 @@ function vProd(){if(!isG())return go(home());const C=aLancer(),n=Math.min(C.leng
    <div class="card"><h2>Lancer un lot</h2>${C.length?`<p style="margin:0 0 6px">Prochains salons validés, dans l’ordre :</p><table><tbody>${C.slice(0,n).map(o=>`<tr><td><span class="n cd">${court(o)}</span> ${esc(o.client.nom)}</td><td>${esc(o.forme)} · ${fmt(mlOf(o),1)} ml</td><td class="n">${o.interne?'showroom':'rang '+rangOf(o)}</td></tr>`).join('')}</tbody></table>
      ${C.length>n?`<p class="muted" style="margin:6px 0 0">${C.length-n} autre(s) salon(s) validé(s) pour le lot suivant.</p>`:''}
      <div class="g2"><div><label class="f" for="lFin">Fin prévue du lot</label><input type="date" id="lFin" value="${dflt}"></div><div><label class="f" for="lBar">Barres de face reçues (cm)</label><input type="number" class="num" id="lBar" inputmode="numeric" min="100" max="600" step="5" value="${bar0}"></div></div>
+     <p class="muted" style="font-size:.85rem;margin:8px 0 0">Panneaux du lot (Réglages, selon l’arrivage) : ${panTxt(panSet())} cm.</p>
      <p class="muted" style="font-size:.85rem;margin:8px 0 0">Délais si le lot est lancé maintenant : ${STEPS.map(s=>s.lab+' '+jour(dl0[s.k]+'T12:00:00')).join(' · ')}.</p>
      <button class="btn pri full" id="bLot" style="margin-top:10px">Lancer le lot ${num} (${n} salon${n>1?'s':''})</button>`:'<p class="muted" style="margin:0">Aucune commande validée en attente.</p>'}</div>
    ${[...S.lots].sort((a,b)=>b.num-a.num).map(l=>{const O=l.orderIds.map(id=>S.orders.find(o=>o.id===id)).filter(o=>o&&!o.annule);
@@ -13590,19 +13604,27 @@ function vProd(){if(!isG())return go(home());const C=aLancer(),n=Math.min(C.leng
       <p class="muted" style="font-size:.9rem;margin:6px 0">Fiches de fabrication : ${O.length-fabManque(l).length} / ${O.length} salon${O.length>1?'s':''} prêt${O.length-fabManque(l).length>1?'s':''}.</p>
       ${ONLINE?`<p class="muted" data-call="${l.id}" style="font-size:.9rem;margin:6px 0">${calLot(O)}</p>`:''}
       <div class="row"><button class="btn sm" data-fl="${l.id}">Fiches du lot (PDF)</button>${fabManque(l).length?`<button class="btn sm pri" data-fab="${l.id}">Préparer les fiches de fabrication</button>`:''}${ONLINE&&O.length&&O.every(o=>Fab.calOk(o))?`<button class="btn sm" data-cz="${l.id}">Programmes CNC du lot (ZIP)</button>`:''}${ONLINE&&!Fab.calBusy()&&O.some(o=>Fab.calNeed(o)&&Fab.calInfo(o).st==='err')?`<button class="btn sm" data-cgo="${l.id}">Relancer le calepinage</button>`:''}</div><p class="muted" data-flm="${l.id}" style="font-size:.85rem;margin:6px 0 0" aria-live="polite"></p>
+      <details${OPANL===l.id?' open':''}><summary>Panneaux du lot : ${panTxt(panN(l.pan))} cm</summary>${(c=>`${panForm(panN(l.pan),'lp'+l.id,c)}
+        ${c?'<p class="muted" style="font-size:.85rem;margin:6px 0 0">La découpe CNC a commencé : le format de ce lot ne peut plus changer.</p>':`<button class="btn sm" data-pls="${l.id}" style="margin-top:8px">Enregistrer le format de ce lot</button><p class="muted" style="font-size:.85rem;margin:6px 0 0">Les fiches, le calepinage et les programmes CNC des salons du lot sont refaits pour ce format.</p>`}`)(O.some(o=>done(o,'cnc')))}</details>
       <details><summary>Délais du lot</summary><table><tbody>${STEPS.map(s=>{const lim=finJour(s.k==='emb'?l.fin:dlLot(l)[s.k]),nt=O.filter(o=>tard(o,s.k)).length,nd=O.filter(o=>done(o,s.k)).length;return `<tr><td>${s.lab}</td><td>${jour(lim)}${lim.getDay()===6?' 15 h':''}</td><td class="n">${nd}/${O.length}</td><td>${nt?`<b class="neg">${nt} en retard</b>`:nd===O.length?'<span class="pos">fini</span>':''}</td></tr>`;}).join('')}</tbody></table></details>
       <details><summary>Liste d’achat du lot</summary>${achats(O,l)}</details></div>`;}).join('')}`);
   if($('bLot'))$('bLot').onclick=e=>{const b=e.currentTarget;if(!b.dataset.armed){b.dataset.armed='1';b.textContent='Confirmer le lancement du lot '+num;return;}
-    const L=C.slice(0,n),l={id:uid(),num,at:new Date().toISOString(),par:ME.id,fin:$('lFin').value||dflt,dl:{...dl0,emb:$('lFin').value||dflt},barre:Math.min(600,Math.max(100,+$('lBar').value||bar0)),orderIds:L.map(o=>o.id)};S.lots.push(l);L.forEach(o=>{o.lotId=l.id;prodOf(o);});Store.save();
+    const L=C.slice(0,n),l={id:uid(),num,at:new Date().toISOString(),par:ME.id,fin:$('lFin').value||dflt,dl:{...dl0,emb:$('lFin').value||dflt},barre:Math.min(600,Math.max(100,+$('lBar').value||bar0)),pan:panSet(),orderIds:L.map(o=>o.id)};S.lots.push(l);L.forEach(o=>{o.lotId=l.id;prodOf(o);});Store.save();
     flash('Lot '+num+' lancé : '+n+' salon'+(n>1?'s':'')+'. Imprime les fiches du lot.');vProd();if(ONLINE)fabLot(l);};
   document.querySelectorAll('[data-cz]').forEach(b=>b.onclick=async()=>{const l=S.lots.find(x=>x.id===b.dataset.cz),O=l.orderIds.map(id=>S.orders.find(o=>o.id===id)).filter(o=>o&&!o.annule),m=document.querySelector(`[data-flm="${l.id}"]`);
     b.disabled=true;m.textContent='Préparation et contrôle des programmes du lot…';try{const F=await Fab.cncLot(O);m.textContent=await saveFile('Programmes-lot-'+l.num+'.zip',F.zip,'application/zip')+' — '+F.names.length+' programmes, '+F.nEtq+' étiquettes.';}catch(e){m.innerHTML='<b class="neg">'+esc(fabErr(e.message||String(e)))+'</b>';}b.disabled=false;});
   document.querySelectorAll('[data-cgo]').forEach(b=>b.onclick=()=>{Fab.calErrClear();Fab.calRun(S.lots.find(x=>x.id===b.dataset.cgo).orderIds);vProd();});
   calInit();calAuto();
+  document.querySelectorAll('[data-pls]').forEach(b=>b.onclick=()=>{const l=S.lots.find(x=>x.id===b.dataset.pls),O=l.orderIds.map(id=>S.orders.find(o=>o.id===id)).filter(o=>o&&!o.annule);OPANL=l.id;
+    if(O.some(o=>done(o,'cnc'))){flash('La découpe CNC a commencé : le format de ce lot ne peut plus changer.','err');return vProd();}
+    const p=panRead('lp'+l.id),ko=panKo(p,O);if(ko){flash(ko,'err');return vProd();}
+    if(Fab.pk(p)===Fab.pk(panN(l.pan))){flash('Le format du lot n’a pas changé.');return vProd();}
+    l.pan=p;Store.save();flash('Lot '+l.num+' : panneaux '+panTxt(p)+' cm. Les fiches et le calepinage sont refaits.');vProd();if(ONLINE)fabLot(l);});
   document.querySelectorAll('[data-fab]').forEach(b=>b.onclick=()=>{b.disabled=true;fabLot(S.lots.find(x=>x.id===b.dataset.fab)).then(r=>{if(!r)vProd();});});
   document.querySelectorAll('[data-fl]').forEach(b=>b.onclick=async()=>{const l=S.lots.find(x=>x.id===b.dataset.fl),O=l.orderIds.map(id=>S.orders.find(o=>o.id===id)).filter(o=>o&&!o.annule);
     const {blob,name}=fichePdf(O,'Fiches-lot-'+l.num+'.pdf');document.querySelector(`[data-flm="${l.id}"]`).textContent=await saveFile(name,blob,'application/pdf');});}
 
+let OPANL=null;
 /* ---------- fiche d'un salon en fabrication ---------- */
 function vSal(){const a=ARG||{},o=S.orders.find(x=>x.id===a.id);if(!o||!o.lotId||!lotOf(o)||(!isG()&&!isOp()&&!canV(o)))return go(home());
   const l=lotOf(o),p=prodOf(o),g=isG(),vd=!g&&canV(o),mine=g?STEPS.map(s=>s.k):vd?STEPS.filter(s=>s.g).map(s=>s.k):(ME.postes||[]),blk=bloque(o);
@@ -13791,7 +13813,7 @@ function cnc(D){const col={c:'#b9cfe0',t:'#e9c99b',g:'#c6dcbc'},ring=r=>'M'+r.ma
    `<div class="msg${c.err?' err':''}" id="calMsg">${e(c.msg||'Le plan des plaques CP 15 et les programmes .cnc se préparent dans la version en ligne de l’app.')}</div>`+cp3.map(p=>pl(p,`CP 3 · ${cm(p.SW,0)} × ${cm(p.SL,0)}`)+`<p class="fnote">Peaux de la table et des guéridons (les mêmes pour tous les salons) : hauteur dans la longueur de la plaque, 25 mm mini entre pièces.</p>`).join('');}
   return head(D,qui(D,'cnc','Abdellatif'),'CNC panneaux')+chips([`<b>${D.plaques.length}</b> plaques CP 15`,`<b>${cp3.length}</b> plaque${cp3.length>1?'s':''} CP 3`,`<b>${nP}</b> pièces`,`<b>${D.nEtq}</b> étiquettes`])+
    `<div class="leg"><i style="background:${col.c}"></i>Carcasse (étiquetée)<i style="background:${col.t}"></i>Table<i style="background:${col.g}"></i>Guéridons<i style="background:${INK};border-radius:50%"></i>Perçage CNC</div><p class="fnote" style="margin:0">Touche une plaque pour l’agrandir. Semelles : perçage Ø 12 pour l’insert du vérin.</p>`+
-   D.plaques.map(p=>pl(p,'CP 15')).join('')+cp3.map(p=>pl(p,`CP 3 · ${cm(p.SW,0)} × ${cm(p.SL,0)}`)+`<p class="fnote">${p.prog==='CP3'?'Peaux : hauteur dans la longueur de la plaque':'Peaux du dossier (étiquetées) et des guéridons en plus'}, 25 mm mini entre pièces. Reste ${cm(p.SL-p.used-15,0)} cm de plaque.</p>`).join('')+
+   D.plaques.map(p=>pl(p,`CP 15 · ${cm(p.SW,0)} × ${cm(p.SL,0)}`)).join('')+cp3.map(p=>pl(p,`CP 3 · ${cm(p.SW,0)} × ${cm(p.SL,0)}`)+`<p class="fnote">${p.prog==='CP3'||p.all?'Peaux de la table et des guéridons : hauteur dans la longueur de la plaque'+(p.all&&p.prog!=='CP3'?' (avec les peaux en plus s’il y en a)':''):'Peaux du dossier (étiquetées) et des guéridons en plus'}, 25 mm mini entre pièces. Reste ${cm(p.SL-p.used-15,0)} cm de plaque.</p>`).join('')+
    `<div class="row2"><button class="btn pri" id="bCnc">Programmes .cnc</button><button class="btn" id="bEtq">Étiquettes 60 × 40</button></div><p id="cncM" class="muted" style="font-size:.85rem;margin:8px 0 0" aria-live="polite"></p>`;}
 
 /* 2 — CNC faces (par lot) */
@@ -13901,7 +13923,7 @@ const CP3STD=[{"n":1,"prog":"CP3","SL":3000,"SW":1220,"used":2450,"np":27,"nh":0
 const Fab=(()=>{
   const ATT_S=300,ATT_W=6,   // attaches « petites pièces » : moins de 300 cm² (réglable) ou moins de 6 cm de large
   attS=()=>{const a=+S.settings.att;return a>=50?a:ATT_S;},
-  GENV='19p3',GENF='19p9',CALV=1,CALB=480000,CFG0={pCo:1,sty:0,P:750,em:300,ang:1,c:300,eS:15,SL:2440,SW:1220,fm:2,F:120,hP:40,endG:1,endD:1,accG:1,accD:1,acT:2,acSame:1,acH:382.5,tPl:20,hPl:90,jm:0};   // jm:0 = matelas sans jeu (ne change aucune pièce en bois)
+  GENV='19p3',GENF='19p10',CALV=1,CALB=480000,CFG0={pCo:1,sty:0,P:750,em:300,ang:1,c:300,eS:15,SL:2440,SW:1220,fm:2,F:120,hP:40,endG:1,endD:1,accG:1,accD:1,acT:2,acSame:1,acH:382.5,tPl:20,hPl:90,jm:0};   // jm:0 = matelas sans jeu (ne change aucune pièce en bois)
   const TABLE={pl:1100,ep:30,rb:325,rs:206.5,rh0:176.5,rh1:120,hb:420,h:620,ds:610,hs:15,lis:60},GUER={pl:500,ep:30,rb:170,rs:110,rh0:90,rh1:60,hb:360,h:540,ds:300,hs:15,lis:50};
   let fr=null,ready=null,busy=false;
   function load(){if(ready)return ready;
@@ -13913,9 +13935,9 @@ const Fab=(()=>{
     return ready;}
   // exécuté dans le cadre du générateur : construit le salon et renvoie ce qui sert aux fiches
   const INSIDE=`(function(c){PROMO.build(c);var i=R.info,u={},n=0,T={};try{noticeSteps().forEach(function(st){(st.hw||[]).forEach(function(h){if(h.tool||!(h.n>0))return;T[h.lab]=(T[h.lab]||0)+h.n;});});}catch(e){T=null;}var nPe=0;R.parts.forEach(function(p){if(p.only3d)return;if(p.mat==='SOM')n++;if(p.mat==='PEAU')nPe++;var q=u[p.unit]=u[p.unit]||{};q[p.ref]=(q[p.ref]||0)+1;});
-    var rb=null;try{rb=rembourrage();}catch(e){}
+    var rb=null,A3=null;try{rb=rembourrage();}catch(e){}
     var ds=(i.dos||[]).map(function(d){var m=[1e9,1e9,-1e9,-1e9];R.parts.forEach(function(p){if(p.id.indexOf(d.tag+'-')!==0||p.mat!=='PEAU'||!p.pl||!p.out)return;var O=p.pl.O,U=p.pl.U,V=p.pl.V,N=p.pl.N;p.out.forEach(function(q){[0,p.t].forEach(function(w){var x=O[0]+U[0]*q[0]+V[0]*q[1]+N[0]*w,y=O[1]+U[1]*q[0]+V[1]*q[1]+N[1]*w;if(x<m[0])m[0]=x;if(y<m[1])m[1]=y;if(x>m[2])m[2]=x;if(y>m[3])m[3]=y;});});});return {tag:d.tag,nm:d.nm,L:d.L,H:d.H,E:d.E,nr:d.nr,nl:d.nl,bb:m};});
-    return JSON.stringify({mods:(i.mods||[]).map(function(m){return {id:m.id,len:m.len,br:m.br};}),seats:i.seats,acc:i.acc,D:i.D,Lx:i.Lx,Ly:i.Ly,hasL:!!i.hasL,hasR:!!i.hasR,units:u,nCarc:n,fl:(i.faces||[]).map(function(f){return f.len;}),hw:T,warn:R.warn||[],dos:ds,nPe:nPe,x3:PROMO.cp3Extra().length,em:P.em,mats:(i.mats||[]).map(function(m){return {nm:m.nm,w:m.w,l:m.l,pan:m.pan||0,p:m.poly};}),cush:(i.cush||[]).map(function(c){return c.poly;}),cous:rb&&rb.cut?rb.cut.filter(function(x){return x.k==='cd';}).map(function(x){return {nm:x.nm,w:x.w,l:x.l,t:x.t,q:x.q};}):[]});})`;
+    return JSON.stringify({mods:(i.mods||[]).map(function(m){return {id:m.id,len:m.len,br:m.br};}),seats:i.seats,acc:i.acc,D:i.D,Lx:i.Lx,Ly:i.Ly,hasL:!!i.hasL,hasR:!!i.hasR,units:u,nCarc:n,fl:(i.faces||[]).map(function(f){return f.len;}),hw:T,warn:R.warn||[],dos:ds,nPe:nPe,x3:(A3=PROMO.cp3All()).ext.length,n3:A3.std.length+A3.ext.length,em:P.em,mats:(i.mats||[]).map(function(m){return {nm:m.nm,w:m.w,l:m.l,pan:m.pan||0,p:m.poly};}),cush:(i.cush||[]).map(function(c){return c.poly;}),cous:rb&&rb.cut?rb.cut.filter(function(x){return x.k==='cd';}).map(function(x){return {nm:x.nm,w:x.w,l:x.l,t:x.t,q:x.q};}):[]});})`;
   const r1=x=>Math.round(x*10)/10;
   // quincaillerie réelle du salon, lue dans la notice du générateur (vérins : la ligne compte vérin + insert)
   const hwq=T=>{if(!T)return null;const v=re=>{let n=0;for(const k in T)if(re.test(k))n+=T[k];return n;};return {ver:Math.round(v(/^Vérin/)/2),v30:v(/^Vis 4 × 30/),v40:v(/^Vis 4 × 40/),m6:v(/^Insert M6/),feu:v(/^Patin feutre/)};};
@@ -13937,7 +13959,7 @@ const Fab=(()=>{
       .sort((a,b)=>ORD.indexOf(a.k)-ORD.indexOf(b.k)).map((f,i)=>{const {k,...r}=f;return {id:'FA-'+(i+1),...r};});
     const acc=['G','D'].filter(k=>g.acc&&g.acc[k]).map(k=>{const a=g.acc[k],b=a.bb;return {id:'AC'+k,nm:k==='G'?'Gauche':'Droit',x0:fx(b[2]),y0:r1(b[1]),x1:fx(b[0]),y1:r1(b[3]),l:Math.round(Math.max(b[2]-b[0],b[3]-b[1])),w:a.W,h:Math.round((+a.H||CFG0.acH)+500-CFG0.acH),...(a.tp===0||a.tp===1?{tp:a.tp}:{})};});
     return {v:1,gen:GENV,at:new Date().toISOString(),W:Math.round(W),H:Math.round(Math.max(g.Ly,CFG0.P+250)),P:CFG0.P,lgc:{fond:+lg.fond||0,rg:+lg.rg||0,rd:+lg.rd||0},
-      banq,ang:ang.map((a,i)=>({id:'AN'+(i+1),p:a.p.map(q=>[fx(q[0]),r1(q[1])])})),acc,faces,nEtq:g.nCarc+(g.nPe||0),nPcs:g.nCarc+87+24*gueOf(o),...(hwq(g.hw)?{q:hwq(g.hw)}:{}),...(g.x3?{x3:g.x3}:{}),
+      banq,ang:ang.map((a,i)=>({id:'AN'+(i+1),p:a.p.map(q=>[fx(q[0]),r1(q[1])])})),acc,faces,nEtq:g.nCarc+(g.nPe||0),nPcs:g.nCarc+87+24*gueOf(o),...(hwq(g.hw)?{q:hwq(g.hw)}:{}),...(g.x3?{x3:g.x3}:{}),...(g.n3&&g.n3!==1+(g.x3||0)?{n3:g.n3}:{}),
       // matelas et coussins (pour le fournisseur de matelas et le tapissier) : pièces, cotes et emprise vue de dessus
       em:Math.round(g.em||300),mats:(g.mats||[]).map((m,k)=>({id:'M'+(k+1),nm:/angle/.test(m.nm)?'angle':m.nm.replace(/^Matelas — /,''),w:Math.round(m.w),l:Math.round(m.l),...(m.pan?{pan:Math.round(m.pan)}:{}),p:m.p.map(q=>[fx(q[0]),r1(q[1])])})),
       cush:(g.cush||[]).map(p=>p.map(q=>[fx(q[0]),r1(q[1])])),cous:(g.cous||[]).map(c=>({nm:c.nm.replace(/^Coussin de dos — /,''),w:Math.round(c.w),l:Math.round(c.l),t:Math.round(c.t),q:c.q})),
@@ -13948,11 +13970,12 @@ const Fab=(()=>{
   const accCfg=o=>{const a=accOf(o),T={m:2,t:0,r:1};return a.g.t==='m'&&a.d.t==='m'?{}:{acSame:0,acT:T[a.g.t],acW:a.g.w*10,acTD:T[a.d.t],acWD:a.d.w*10,acH:accTop(a.g)*10-AZ0,acHD:accTop(a.d)*10-AZ0,acP:0,acPD:0};};   // acH = hauteur au-dessus de la caisse (dessus à h cm du sol)
   // dossier (option, par côté) : fût CNC de 5 cm, dessus à 65 cm du sol, posé contre le mur devant la plinthe (2 cm). Les cotes restent mur à mur :
   // le générateur place le dossier derrière sa ligne de mur, donc on recule cette ligne de 7 cm sur les côtés qui touchent un dossier.
+  const pk=p=>p.c15.join('x')+'|'+p.c3.join('x'),PK0=pk(PAN0);
   const omOf=o=>({mat:matOf(o),tis:tisOf(o)}),omKey=m=>(m&&m.mat?'m':'')+(m&&m.tis?'t':'');
   const DOS={h:DOSH*10,e:50},dsKey=d=>{d=dosN(d);return (d.f?'f':'')+(d.g?'g':'')+(d.d?'d':'');};
   const dosCfg=o=>{const d=dosOf(o),k=DOS.e+CFG0.tPl,c={},one=X=>({['dos'+X]:1,['doT'+X]:0,['hDo'+X]:DOS.h-3,['eDo'+X]:DOS.e-6});
-    if(!d.f&&!d.g&&!d.d)return {c,rF:0,rR:0};Object.assign(c,{cSL:3000,cSW:1220},d.f?one('B'):{},d.g?one('L'):{},d.d?one('R'):{});return {c,rF:k*((d.g?1:0)+(d.d?1:0)),rR:d.f?k:0};};
-  const cfgOf=o=>{const lg=lgOf(o),F=+lg.fond||0,G=+lg.rg||0,D=+lg.rd||0,ds=dosCfg(o),ng=gueOf(o);return {...CFG0,forme:o.forme==='U'?3:o.forme==='L'?1:0,L2:F*10-ds.rF,L1:o.forme==='Droit'?0:G*10-ds.rR,L3:o.forme==='U'?D*10-ds.rR:0,...(tableOf(o)===120?{tb:120,mg:10}:{}),...accCfg(o),...ds.c,...(ng?{ng}:{})};};   // table Ø 120 : le plateau prend toute la largeur de la plaque, marge de 10 mm
+    if(!d.f&&!d.g&&!d.d)return {c,rF:0,rR:0};Object.assign(c,{cSL:panOf(o).c3[0]*10,cSW:panOf(o).c3[1]*10},d.f?one('B'):{},d.g?one('L'):{},d.d?one('R'):{});return {c,rF:k*((d.g?1:0)+(d.d?1:0)),rR:d.f?k:0};};
+  const cfgOf=o=>{const lg=lgOf(o),F=+lg.fond||0,G=+lg.rg||0,D=+lg.rd||0,ds=dosCfg(o),ng=gueOf(o),pn=panOf(o),SL=pn.c15[0]*10,SW=pn.c15[1]*10;return {...CFG0,...(pk(pn)!==PK0?{SL,SW,c3L:pn.c3[0]*10,c3W:pn.c3[1]*10}:{}),forme:o.forme==='U'?3:o.forme==='L'?1:0,L2:F*10-ds.rF,L1:o.forme==='Droit'?0:G*10-ds.rR,L3:o.forme==='U'?D*10-ds.rR:0,...(tableOf(o)===120?{tb:120,...(SW<1230?{mg:10}:{})}:{}),...accCfg(o),...ds.c,...(ng?{ng}:{})};};   // table Ø 120 : le plateau prend toute la largeur de la plaque, marge de 10 mm
   async function make(o){const lg=lgOf(o),F=+lg.fond||0,G=+lg.rg||0,D=+lg.rd||0;
     if(!(F>0)||(o.forme!=='Droit'&&!(G>0))||(o.forme==='U'&&!(D>0)))throw new Error('cotes incomplètes');
     const W=await load(),c=cfgOf(o);
@@ -13962,18 +13985,18 @@ const Fab=(()=>{
     return build(o,g);}
   // dossier complet pour l'affichage d'une fiche
   function dossier(o){const f=o.prod&&o.prod.fab;if(!f)return null;const l=lotOf(o),lg=lgOf(o),q={};POSTES.forEach(p=>{q[p.k]=opsDe(p.k).join(' · ');});
-    return {...f,code:court(o),nom:o.client.nom+' · '+o.code,forme:o.forme,lg:{fond:+lg.fond||0,rg:+lg.rg||0,rd:+lg.rd||0},SL:2440,SW:1220,barres:{L:((l&&l.barre)||S.settings.barre||250)*10},plaques:(planGet(o)||{}).pl||[],cal:calInfo(o),cp3:CP3STD.concat((planGet(o)||{}).px||[]),ng:f.ng||0,tisM:tisNom(o),table:f.tb===120?{...TABLE,pl:1200}:TABLE,guer:GUER,qui:q};}
+    return {...f,code:court(o),nom:o.client.nom+' · '+o.code,forme:o.forme,lg:{fond:+lg.fond||0,rg:+lg.rg||0,rd:+lg.rd||0},SL:panOf(o).c15[0]*10,SW:panOf(o).c15[1]*10,pan:panOf(o),barres:{L:((l&&l.barre)||S.settings.barre||250)*10},plaques:(planGet(o)||{}).pl||[],cal:calInfo(o),cp3:(x=>x.length&&x[0].all?x:CP3STD.concat(x))((planGet(o)||{}).px||[]),ng:f.ng||0,tisM:tisNom(o),table:f.tb===120?{...TABLE,pl:1200}:TABLE,guer:GUER,qui:q};}
   // les cotes ont-elles changé depuis le calcul ?
-  const perime=o=>{const f=o.prod&&o.prod.fab,lg=lgOf(o);return !!f&&((f.gen!==GENV&&!done(o,'cnc'))||!f.lgc||f.lgc.fond!==(+lg.fond||0)||f.lgc.rg!==(+lg.rg||0)||f.lgc.rd!==(+lg.rd||0)||(f.tb||110)!==tableOf(o)||acKey(f.ac)!==acKey(accOf(o))||(/r/.test(acKey(f.ac))&&(f.cl!==500||!f.bx))||dsKey(f.ds)!==dsKey(dosOf(o))||(f.ng||0)!==gueOf(o)||omKey(f.om)!==omKey(omOf(o))||((matOf(o)||tisOf(o))&&!f.mats));};   // tiroir : fiches faites avant le passage aux coulisses de 50 cm = à refaire
+  const perime=o=>{const f=o.prod&&o.prod.fab,lg=lgOf(o);return !!f&&((f.gen!==GENV&&!done(o,'cnc'))||((f.pk||PK0)!==pk(panOf(o))&&!done(o,'cnc'))||!f.lgc||f.lgc.fond!==(+lg.fond||0)||f.lgc.rg!==(+lg.rg||0)||f.lgc.rd!==(+lg.rd||0)||(f.tb||110)!==tableOf(o)||acKey(f.ac)!==acKey(accOf(o))||(/r/.test(acKey(f.ac))&&(f.cl!==500||!f.bx))||dsKey(f.ds)!==dsKey(dosOf(o))||(f.ng||0)!==gueOf(o)||omKey(f.om)!==omKey(omOf(o))||((matOf(o)||tisOf(o))&&!f.mats));};   // tiroir : fiches faites avant le passage aux coulisses de 50 cm = à refaire
   // prépare les fiches d'une liste de salons, l'un après l'autre
   async function prepare(ids,onStep){if(busy)return {ok:0,ko:[['','calcul déjà en cours']]};busy=true;let ok=0;const ko=[];
     try{for(const id of ids){const o=S.orders.find(x=>x.id===id);if(!o)continue;if(onStep)onStep(o);
-        try{const old=o.prod&&o.prod.fab,tb=tableOf(o),ac=accOf(o),f=await make(o);f.tb=tb;f.ac=ac;if(/r/.test(acKey(ac))){f.cl=500;f.bx=1;}if(dsKey(dosOf(o)))f.ds=dosOf(o);if(gueOf(o))f.ng=gueOf(o);if(omKey(omOf(o)))f.om=omOf(o);if(old&&old.cal&&old.gen===GENV&&(old.cl||0)===(f.cl||0)&&(old.bx||0)===(f.bx||0)&&(old.tb||110)===tb&&acKey(old.ac)===acKey(ac)&&dsKey(old.ds)===dsKey(f.ds)&&(old.ng||0)===(f.ng||0)&&old.lgc&&['fond','rg','rd'].every(k=>old.lgc[k]===f.lgc[k]))f.cal=old.cal;prodOf(o).fab=f;ok++;Store.save();}catch(e){ko.push([court(o),e.message||String(e)]);if(/introuvable|délai/.test(e.message||''))break;}}}
+        try{const old=o.prod&&o.prod.fab,tb=tableOf(o),ac=accOf(o),f=await make(o);f.tb=tb;f.ac=ac;if(/r/.test(acKey(ac))){f.cl=500;f.bx=1;}if(dsKey(dosOf(o)))f.ds=dosOf(o);if(gueOf(o))f.ng=gueOf(o);if(omKey(omOf(o)))f.om=omOf(o);if(pk(panOf(o))!==PK0)f.pk=pk(panOf(o));if(old&&old.cal&&old.gen===GENV&&(old.pk||PK0)===(f.pk||PK0)&&(old.cl||0)===(f.cl||0)&&(old.bx||0)===(f.bx||0)&&(old.tb||110)===tb&&acKey(old.ac)===acKey(ac)&&dsKey(old.ds)===dsKey(f.ds)&&(old.ng||0)===(f.ng||0)&&old.lgc&&['fond','rg','rd'].every(k=>old.lgc[k]===f.lgc[k]))f.cal=old.cal;prodOf(o).fab=f;ok++;Store.save();}catch(e){ko.push([court(o),e.message||String(e)]);if(/introuvable|délai/.test(e.message||''))break;}}}
     finally{busy=false;}
     return {ok,ko};}
   /* ----- calepinage CP 15 : plan rapide tout de suite, puis recherche d'une plaque de moins en arrière-plan (un salon à la fois) ----- */
   const calOf=o=>(o&&o.prod&&o.prod.fab&&o.prod.fab.cal)||null;
-  const calOk=o=>{const c=calOf(o);return !!c&&c.v===CALV&&c.st==='ok'&&!!c.s&&!perime(o);};
+  const calOk=o=>{const c=calOf(o);return !!c&&c.v===CALV&&c.st==='ok'&&!!c.s&&(c.pk||PK0)===pk(panOf(o))&&!perime(o);};
   const calNeed=o=>!!(o&&!o.annule&&o.lotId&&o.prod&&o.prod.fab&&!perime(o)&&!calOk(o));
   let cq=[],cc=null,cerr={};const cl=[];
   const calEmit=()=>cl.forEach(f=>{try{f();}catch(e){}});
@@ -13981,11 +14004,13 @@ const Fab=(()=>{
   async function calNext(){if(cc||!cq.length)return;const id=cq.shift(),o=S.orders.find(x=>x.id===id);if(!calNeed(o))return calNext();
     cc={id,step:'fast',n:0,left:0,nf:0};calEmit();let W;try{W=await load();}catch(e){cerr[id]=e.message||String(e);cq.forEach(x=>{cerr[x]=cerr[id];});cq=[];cc=null;calEmit();return;}
     if(!cc||cc.id!==id)return;const fin=()=>{if(cc&&cc.id===id)cc=null;calEmit();calNext();},now=()=>new Date().toISOString();
-    W.__calArg={c:cfgOf(o),o:{budget:CALB}};
+    W.__calArg={c:cfgOf(o),o:{budget:CALB}};const k0=pk(panOf(o)),kp=k0!==PK0?{pk:k0}:{};
     W.__calCb=d=>{const f=o.prod&&o.prod.fab;if(!cc||cc.id!==id||!f)return;
-      if(d.step==='fast'){f.cal={v:CALV,st:'calc',m:'r',n:d.n,s:d.s,sig:d.sig,at:now()};Store.save();cc.step='opt';cc.nf=d.n;calEmit();}
+      // format des plaques changé pendant le calcul : ce plan ne vaut plus rien, on recommence avec le nouveau format
+      if(pk(panOf(o))!==k0){try{W.eval('PROMO.stop()');}catch(e){}cc=null;calEmit();calRun([id]);return;}
+      if(d.step==='fast'){f.cal={v:CALV,st:'calc',m:'r',n:d.n,s:d.s,sig:d.sig,at:now(),...kp};Store.save();cc.step='opt';cc.nf=d.n;calEmit();}
       else if(d.step==='try'){cc.n=d.n;cc.left=d.left;calEmit();}
-      else if(d.step==='done'){if(d.ok&&f.cal&&d.n<f.cal.n)f.cal={v:CALV,st:'ok',m:'o',n:d.n,nf:f.cal.n,s:d.s,sig:d.sig,at:now()};else if(f.cal)f.cal={...f.cal,st:'ok'};Store.save();fin();}
+      else if(d.step==='done'){if(d.ok&&f.cal&&d.n<f.cal.n)f.cal={v:CALV,st:'ok',m:'o',n:d.n,nf:f.cal.n,s:d.s,sig:d.sig,at:now(),...kp};else if(f.cal)f.cal={...f.cal,st:'ok'};Store.save();fin();}
       else{if(f.cal&&f.cal.st==='calc'&&f.cal.s){f.cal={...f.cal,st:'ok'};Store.save();}else cerr[id]=d.msg||'erreur';fin();}};
     try{W.eval('PROMO.calc(window.__calArg.c,window.__calArg.o,window.__calCb)');}catch(e){cerr[id]=e.message||String(e);fin();}}
   // « Utiliser le plan rapide maintenant » : arrête la recherche de ce salon et libère ses programmes
@@ -14007,7 +14032,7 @@ const Fab=(()=>{
   // programmes .cnc + étiquettes d'un salon (ZIP et PDF) ; le générateur refuse de sortir les fichiers si son contrôle trouve une erreur
   async function cncFiles(o){if(!calOk(o))throw new Error('le calepinage de ce salon n’est pas fini');const W=await load();W.__fileArg=fileArg(o);return await W.eval('PROMO.files(window.__fileArg.c,window.__fileArg.cal,window.__fileArg.code,window.__fileArg.nom,window.__fileArg.att)');}
   async function cncLot(O){const ko=O.filter(o=>!calOk(o));if(ko.length)throw new Error('calepinage pas fini pour '+ko.map(court).join(', '));const W=await load();W.__lotArg=O.map(fileArg);return await W.eval('PROMO.filesLot(window.__lotArg)');}
-  return {make,build,dossier,prepare,perime,load,busy:()=>busy,GENV,CFG0,DOS,cfgOf,calRun,calUse,calOk,calNeed,calInfo,calBusy:()=>!!cc||cq.length>0,calErrClear:()=>{cerr={};},onCal:f=>cl.push(f),planGet,planLoad,cncFiles,cncLot};
+  return {pk,PK0,make,build,dossier,prepare,perime,load,busy:()=>busy,GENV,CFG0,DOS,cfgOf,calRun,calUse,calOk,calNeed,calInfo,calBusy:()=>!!cc||cq.length>0,calErrClear:()=>{cerr={};},onCal:f=>cl.push(f),planGet,planLoad,cncFiles,cncLot};
 })();
 
 /* ===== Livraison : tournées, contrôle + regroupement la veille, solde avant le montage, preuve de livraison ===== */
