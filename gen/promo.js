@@ -17,7 +17,8 @@ const T120=q=>{if(q.rep!=='PL-C1'&&q.rep!=='PL-C2')return q;const R=600,sc=(C,k)
   return q.rep==='PL-C1'?{...q,c:[sc(q.c[0],R/550)],pr:(q.pr||[]).map(v=>[v[0]+50,v[1]+50,...v.slice(2)])}:{...q,c:[sc(q.c[0],R/550),sc(q.c[1],(R-50)/500)]};};
 /* guéridons en plus (option, 0 à 4) : mêmes pièces que les guéridons 1 et 2 */
 const nGx=()=>Math.min(4,Math.max(0,Math.round(+(P&&P.ng)||0)));
-function tabParts(){const L=[],U=[['T',P&&P.tb===120?DT.T.map(T120):DT.T,'Table'],['G1',DT.G,'Guéridon 1'],['G2',DT.G,'Guéridon 2']];for(let k=0;k<nGx();k++)U.push(['G'+(3+k),DT.G,'Guéridon '+(3+k)]);
+/* formule 1 (P.nt) : salon + 2 guéridons, sans la table — ni ses pièces CP 15, ni ses peaux CP 3 */
+function tabParts(){const L=[],U=[...(P&&P.nt?[]:[['T',P&&P.tb===120?DT.T.map(T120):DT.T,'Table']]),['G1',DT.G,'Guéridon 1'],['G2',DT.G,'Guéridon 2']];for(let k=0;k<nGx();k++)U.push(['G'+(3+k),DT.G,'Guéridon '+(3+k)]);
   for(const [u,src,nm] of U)for(const q of src){const base={ref:'TAB',cat:'acc',mat:'SOM',t:15,unit:u,tab:1};
     if(u==='T'&&q.rep==='PL-C2'){ringSplit(q.c[0],q.c[1],NSEG).forEach((o,k)=>L.push({...base,id:`T-PL-C2-${k+1}`,name:`${nm} — PL-C2 (segment ${k+1}/${NSEG})`,out:orient(o,true),holes:[]}));continue;}
     const pkL=(q.pr||[]).map(v=>({lay:v[3]?`PERCAGE_D${v[2]}_P${v[3]}`:`PERCAGE_TRAVERSANT_D${v[2]}`,pts:circ(v[0],v[1],v[2]/2)}));
@@ -198,7 +199,7 @@ function checkCnc(name,sh,r){const bad=r.obad.map(e=>name+' : '+e),rd=readCnc(r.
 
 /* format des plaques CP 3 du lot (réglable selon l'arrivage) ; le format standard 122 × 300 garde exactement la plaque standard */
 const c3S=()=>{const d=DT.CP3;return {SL:Math.round(+(P&&P.c3L))||d.SL,SW:Math.round(+(P&&P.c3W))||d.SW,mg:d.mg};},c3Def=()=>{const s=c3S();return s.SL===DT.CP3.SL&&s.SW===DT.CP3.SW;};
-const stdIt=()=>DT.CP3.items.map(q=>{const p={id:q.id,ref:'TAB',name:q.nm||q.id,mat:'PEAU',t:3,out:orient(q.o,true),holes:(q.hs||[]).map(h=>orient(h,false)),unit:q.u,tab:1},bb=bbox(p.out);return {p,bb,w:bb.w,h:bb.h,x:bb.x0,y:bb.y0,rot:false,r2:false,std:1};});
+const stdIt=()=>DT.CP3.items.filter(q=>!(P&&P.nt&&q.u==='T')).map(q=>{const p={id:q.id,ref:'TAB',name:q.nm||q.id,mat:'PEAU',t:3,out:orient(q.o,true),holes:(q.hs||[]).map(h=>orient(h,false)),unit:q.u,tab:1},bb=bbox(p.out);return {p,bb,w:bb.w,h:bb.h,x:bb.x0,y:bb.y0,rot:false,r2:false,std:1};});
 function cp3Sheet(){const s=c3S(),sh={SL:s.SL,SW:s.SW,mg:s.mg,items:stdIt(),chutes:[],stock:null};return sh;}
 /* peaux de la table et des 2 guéridons : la plaque standard telle quelle si elle tient dans le format du lot ; sinon coupée en tranches dans la longueur
    (mêmes positions relatives, donc mêmes écarts) ; si la plaque est trop étroite, rangées une à une (sans tourner, 25 mm entre les pièces) */
@@ -274,7 +275,7 @@ function labels(pg,code,nom){const {jsPDF}=window.jspdf,W=60,H=40,E=[];P.cli=nom
 function note(pg,code,nom,nEtq){const L=['PROGRAMMES CNC — salon '+code+(nom?' ('+nom+')':''),'Format Lang (mm), fraise droite Ø'+P.fr+', origine au centre de la plaque, X = largeur, Y = longueur, Z0 sur le dessus.',
   'Départ de chaque détourage du côté le plus éloigné de la dernière pièce découpée. Pièces logées dans une ouverture : coupées avant cette ouverture.',
   pg.att.on?'Attaches : '+pg.att.L+' mm (dernier passage), '+pg.att.H+' mm d’épaisseur laissée (1 mm sur le CP 3), '+(pg.att.small?'seulement sur les petites pièces (moins de '+Math.round(pg.att.small.a/100)+' cm² ou moins de '+Math.round(pg.att.small.w/10)+' cm de large).':'sur toutes les pièces.'):'Sans attaches.',
-  'Étiquettes 60 × 40 : '+nEtq+' pour la carcasse, dans l’ordre de sortie de chaque plaque. Table et guéridons : pas d’étiquette, aucune gravure.',''];
+  'Étiquettes 60 × 40 : '+nEtq+' pour la carcasse, dans l’ordre de sortie de chaque plaque. '+(P&&P.nt?'Formule 1 : pas de table. Guéridons':'Table et guéridons')+' : pas d’étiquette, aucune gravure.',''];
   for(const f of pg.out){const nc=f.sh.items.filter(i=>!i.p.tab).length;L.push(f.name+'.cnc  ←  '+(f.mat==='SOM'?'CP 15':'CP 3')+', '+f.sh.SW+' × '+f.sh.SL+', profondeur '+f.r.D+' — '+f.sh.items.length+' pièces'+(nc&&(f.mat==='SOM'||nc<f.sh.items.length)?' dont '+nc+' étiquetées':nc?' étiquetées':'')+(f.r.nTab?', '+f.r.nTab+' attaches sur '+f.r.nTabP+' pièces':''));
     const k=Object.entries(f.r.skip);if(k.length)L.push('   à faire à part : '+k.map(([a,b])=>b+' × '+a).join(', '));}
   return L.join('\r\n')+'\r\n';}
