@@ -26,7 +26,7 @@ function tabParts(){const L=[],U=[['T',P&&P.tb===120?DT.T.map(T120):DT.T,'Table'
 /* toutes les pièces CP 15 du salon, toujours dans le même ordre (le calepinage enregistré désigne les pièces par leur rang) */
 /* règle du 19/11/2026 : aucune pièce plus longue que la plaque (241 cm utiles). Une banquette trop longue est divisée en deux banquettes
    égales — jamais de pièce coupée en deux avec un assemblage puzzle (tenons ronds). Le dessus dépasse la caisse : on vérifie sur les pièces. */
-function build(c){const L0=Math.min((+c.SL||2440)-30,c.dosB||c.dosL||c.dosR?(+c.c3L||3000)-30:1e9);
+function build(c){const L0=(+c.SL||2440)-30;
   for(const L of [0,70,130,210,310,410,610].map(d=>L0-d)){P={...DEF,...c,Lmax:L};R=buildS(P);if(!(R.splits||[]).length)break;}
   if((R.splits||[]).length)throw new Error('une pièce reste plus longue que la plaque ('+R.splits.map(x=>x.id).join(', ')+')');return R;}
 function parts(c){build(c);return R.parts.filter(p=>p.mat==='SOM'&&!p.only3d).concat(tabParts());}
@@ -211,11 +211,11 @@ function cp3Std(){const s=c3S(),I=stdIt(),Y1=Math.max(...I.map(i=>i.bb.y1)),X1=M
     out.push({SL:s.SL,SW:s.SW,mg:s.mg,items:fit.map(i=>({...i,x:i.x-dx})),chutes:[],stock:null});rest=rest.filter(i=>!fit.includes(i));}
   return out;}
 
-/* plaques CP 3 en plus (même format que la plaque des tables) : peaux des dossiers (pièces PEAU du générateur, libres de tourner) et peaux des guéridons
-   en plus (copie de celles du guéridon 1, gardées dans le sens Y pour rester cintrables) ; 25 mm entre les pièces, placement toujours identique */
+/* plaques CP 3 en plus (même format que la plaque des tables) : peaux des guéridons en plus (copie de celles du guéridon 1, gardées dans le sens Y
+   pour rester cintrables) ; 25 mm entre les pièces, placement toujours identique.
+   Règle du 23/11/2026 : les peaux des dossiers ne sont plus sur les plaques CP 3 (le menuisier les coupe dans les chutes). */
 function cp3Extra(){return cp3All().ext;}
 function cp3All(){const s=c3S(),IT=[];
-  for(const p of R.parts)if(p.mat==='PEAU'&&!p.only3d&&p.out){const bb=bbox(p.out);IT.push({p,bb,w:bb.w,h:bb.h,free:1});}
   const g1=DT.CP3.items.filter(q=>q.u==='G1');for(let k=0;k<nGx();k++)for(const q of g1){const u='G'+(3+k),p={id:q.id.replace(/^G1/,u),ref:'TAB',name:q.nm||q.id,mat:'PEAU',t:3,out:orient(q.o,true),holes:(q.hs||[]).map(h=>orient(h,false)),unit:u,tab:1},bb=bbox(p.out);IT.push({p,bb,w:bb.w,h:bb.h,free:0});}
   const std=cp3Std();
   // format standard : les peaux en plus vont sur des plaques à part (comme avant) ; autre format : elles remplissent d'abord la fin de la dernière plaque des tables
