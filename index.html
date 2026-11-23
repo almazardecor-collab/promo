@@ -13925,7 +13925,7 @@ const CP3STD=[{"n":1,"prog":"CP3","SL":3000,"SW":1220,"used":2450,"np":27,"nh":0
 const Fab=(()=>{
   const ATT_S=300,ATT_W=6,   // attaches « petites pièces » : moins de 300 cm² (réglable) ou moins de 6 cm de large
   attS=()=>{const a=+S.settings.att;return a>=50?a:ATT_S;},
-  GENV='19p3',GENF='19p10',CALV=1,CALB=480000,CFG0={pCo:1,sty:0,P:750,em:300,ang:1,c:300,eS:15,SL:2440,SW:1220,fm:2,F:120,hP:40,endG:1,endD:1,accG:1,accD:1,acT:2,acSame:1,acH:382.5,tPl:20,hPl:90,jm:0};   // jm:0 = matelas sans jeu (ne change aucune pièce en bois)
+  GENV='19p3',GENF='19p11',CALV=1,CALB=480000,CFG0={pCo:1,sty:0,P:750,em:300,ang:1,c:300,eS:15,SL:2440,SW:1220,fm:2,F:120,hP:40,endG:1,endD:1,accG:1,accD:1,acT:2,acSame:1,acH:382.5,tPl:20,hPl:90,jm:0};   // jm:0 = matelas sans jeu (ne change aucune pièce en bois)
   const TABLE={pl:1100,ep:30,rb:325,rs:206.5,rh0:176.5,rh1:120,hb:420,h:620,ds:610,hs:15,lis:60},GUER={pl:500,ep:30,rb:170,rs:110,rh0:90,rh1:60,hb:360,h:540,ds:300,hs:15,lis:50};
   let fr=null,ready=null,busy=false;
   function load(){if(ready)return ready;
