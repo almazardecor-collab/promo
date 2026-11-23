@@ -13238,12 +13238,40 @@ function uiRestore(){let s=null;try{s=JSON.parse(localStorage.getItem(UIK)||'nul
 let DRAFT=null;
 const newDraft=()=>({interne:false,canal:'Showroom',client:{nom:'',tel:'',ville:'',quartier:''},forme:'U',lg:{fond:'',rg:'',rd:''},vitres:false,zoneId:zonesOk()[0]?.id||'',remise:0,remiseMotif:'',notes:'',sr:srMe(),form:2,table:110,acc:{g:{t:'r',w:30,h:24},d:{t:'r',w:30,h:24}},dos:{f:false,g:false,d:false},gue:0,mat:false,tis:false,tisM:''});
 let FSR='tous';
-function vNew(){if(isOp()||isLiv())return go(home());const st=S.settings,DV=VIEW==='dv';if(DV&&!ONLINE)return go('devis');if(DV){if(!DDRAFT)DDRAFT={...newDraft(),devis:{}};}else if(!DRAFT)DRAFT=newDraft();const d=DV?DDRAFT:DRAFT;const plein=!DV&&actives().length>=st.quota;
+/* ---------- modifier / supprimer une commande (gérant, depuis les Réglages) ---------- */
+let EDRAFT=null,SCQ='';
+const lc1=t=>t.charAt(0).toLowerCase()+t.slice(1);
+const edLock=o=>livree(o)?'Salon déjà livré':(o.lotId&&done(o,'cnc'))?'Découpe CNC déjà faite':'';
+// brouillon de modification : les valeurs en vigueur (celles du relevé si les cotes sont relevées)
+function editDraft(o){const J=x=>JSON.parse(JSON.stringify(x)),lg=lgOf(o);
+  return {edit:o.id,code:o.code,lock:edLock(o),interne:!!o.interne,canal:o.canal||'Showroom',client:{nom:'',tel:'',ville:'',quartier:'',...J(o.client||{})},forme:o.forme,lg:{fond:String(lg.fond||''),rg:String(lg.rg||''),rd:String(lg.rd||'')},
+    vitres:!!o.vitres,zoneId:o.zoneId||'',remise:+o.remise||0,remiseMotif:o.remiseMotif||'',notes:o.notes||'',sr:o.sr||srMe(),form:formOf(o),table:tableOf(o),acc:J(accOf(o)),dos:J(dosOf(o)),gue:gueOf(o),mat:matOf(o),tis:tisOf(o),tisM:tisNom(o),...(profX(o)!=null?{prof:profX(o)}:{})};}
+function editSave(d){const o=S.orders.find(x=>x.id===d.edit);if(!o){EDRAFT=null;return go('set');}const lock=edLock(o),t0=totalOf(o),f0=formOf(o);
+  o.client={...o.client,nom:d.client.nom.trim(),ville:d.client.ville,...(o.interne?{}:{tel:d.client.tel,quartier:d.client.quartier})};o.notes=d.notes;if(srOf(d))o.sr=d.sr;
+  if(!o.interne){o.vitres=!!d.vitres;o.zoneId=d.zoneId;o.canal=d.canal;o.remise=Math.max(0,+d.remise||0);o.remiseMotif=o.remise>0?(o.remiseMotif||'accordée par le gérant'):'';}
+  if(!lock){const f=formOf(d),v={forme:d.forme,form:f,table:+d.table===120?120:110,acc:accN(d.acc),dos:dosF(d.forme,d.dos),gue:gueN(d.gue),mat:!!d.mat,tis:!!d.tis,tisM:d.tis?String(d.tisM||''):''},pr=typeof d.prof==='number'?d.prof:null;
+    Object.assign(o,v);o.lg={fond:d.lg.fond,rg:d.forme==='Droit'?'':d.lg.rg,rd:d.forme==='U'?d.lg.rd:''};if(pr!=null)o.prof=pr;else delete o.prof;
+    if(o.releve){const r={...o.releve,...o.lg,...v,prof:pr};delete r.forme;if(f===1)delete r.tabTard;else if(f0===1)r.tabTard=true;o.releve=r;}}
+  Store.save();EDRAFT=null;const t=totalOf(o);
+  flash('Commande '+o.code+' modifiée.'+(t!==t0?' Total : '+dh(t0)+' → '+dh(t)+'.':'')+(lock?' Salon inchangé ('+lc1(lock)+').':o.prod&&o.prod.fab&&Fab.perime(o)?' Recalcule ses fiches de fabrication.':''));go('ord',o.id);}
+function delOrder(o){const i=S.orders.indexOf(o);if(i<0)return;S.orders.splice(i,1);
+  S.lots.forEach(l=>{if((l.orderIds||[]).includes(o.id))l.orderIds=l.orderIds.filter(x=>x!==o.id);});tours().forEach(t=>{if((t.orderIds||[]).includes(o.id))t.orderIds=t.orderIds.filter(x=>x!==o.id);});Store.save();}
+function cmdRows(){const q=SCQ.trim().toLowerCase(),qd=q.replace(/\D/g,''),L=S.orders.filter(o=>!o._sk&&(!q||String(o.code||'').toLowerCase().includes(q)||String(o.client&&o.client.nom||'').toLowerCase().includes(q)||(qd.length>=3&&telN(o.client&&o.client.tel||'').includes(qd))||(/^\d{1,3}$/.test(q)&&court(o)===q.padStart(3,'0'))))
+    .sort((a,b)=>(b.seq||0)-(a.seq||0)||(a.interne?1:0)-(b.interne?1:0)).slice(0,q?30:8);
+  if(!L.length)return '<p class="muted" style="margin:8px 0 0">Aucune commande trouvée.</p>';
+  return L.map(o=>{const p=payeOf(o);return `<div class="it" style="display:block;cursor:default"><span class="l1"><span><span class="n cd">${esc(o.code||'')}</span> ${esc(o.client&&o.client.nom||'')}</span><span class="muted">${ST[etat(o)]||''}</span></span>
+    <span class="muted" style="font-size:.85rem">${esc(o.forme)} · ${formOf(o)===1?'F1':'F2'} · ${o.interne?'showroom':dh(totalOf(o))+(p>0?' · encaissé '+dh(p):'')}${edLock(o)?' · '+lc1(edLock(o)):''}</span>
+    <div class="row" style="margin-top:6px"><button class="btn sm" data-cm="${o.id}">Modifier</button><button class="btn sm bad" data-cx="${o.id}">Supprimer</button></div></div>`;}).join('');}
+function cmdBind(){document.querySelectorAll('[data-cm]').forEach(b=>b.onclick=()=>{const o=S.orders.find(x=>x.id===b.dataset.cm);if(!o)return;EDRAFT=editDraft(o);go('ed');});
+  document.querySelectorAll('[data-cx]').forEach(b=>b.onclick=()=>{const o=S.orders.find(x=>x.id===b.dataset.cx);if(!o)return;
+    if(!b.dataset.armed){b.dataset.armed='1';const p=payeOf(o);b.textContent='Confirmer : supprimer '+o.code+(p>0?' ('+dh(p)+' encaissés)':'')+' définitivement';return;}
+    const c=o.code;delOrder(o);flash('Commande '+c+' supprimée.');const el=$('sCl');if(el){el.innerHTML=cmdRows();cmdBind();}});}
+function vNew(){if(isOp()||isLiv())return go(home());const st=S.settings,DV=VIEW==='dv',ED=VIEW==='ed';if(ED&&(!isG()||!EDRAFT||!S.orders.some(x=>x.id===EDRAFT.edit))){EDRAFT=null;return go('set');}if(DV&&!ONLINE)return go('devis');if(DV){if(!DDRAFT)DDRAFT={...newDraft(),devis:{}};}else if(!ED&&!DRAFT)DRAFT=newDraft();const d=ED?EDRAFT:DV?DDRAFT:DRAFT;const plein=!DV&&!ED&&actives().length>=st.quota;
   if(plein&&!isG()){shell('Promo Salon <b>Bois</b>','Nouvelle commande',`<div class="msg err">Les ventes sont fermées : les ${st.quota} salons sont pris.</div>`);return;}
   if(plein)d.interne=true;if(!isG()||DV)d.interne=false;const I=d.interne;
   const seg=(k,vals,cur)=>`<div class="seg" role="group">${vals.map(v=>`<button type="button" data-seg="${k}" data-v="${esc(v)}" aria-pressed="${cur===v}">${esc(v)}</button>`).join('')}</div>`;
-  shell('Promo Salon <b>Bois</b>',DV?(d.devis.id?'Modifier le devis '+esc(d.devis.code||''):'Nouveau devis'):I?'Nouvelle commande showroom':'Nouvelle commande',`${plein?`<div class="msg err">Les ventes sont fermées : les ${st.quota} salons sont pris. Seules les commandes showroom restent possibles.</div>`:''}
-   <div class="card"><h2>${I?'Showroom':'Client'}</h2>${isG()&&!plein&&!DV?`<label class="f">Type de commande</label>${seg('type',['Client','Showroom (essai)'],I?'Showroom (essai)':'Client')}`:''}
+  shell('Promo Salon <b>Bois</b>',ED?'Modifier la commande '+esc(d.code||''):DV?(d.devis.id?'Modifier le devis '+esc(d.devis.code||''):'Nouveau devis'):I?'Nouvelle commande showroom':'Nouvelle commande',`${plein?`<div class="msg err">Les ventes sont fermées : les ${st.quota} salons sont pris. Seules les commandes showroom restent possibles.</div>`:''}
+   <div class="card"><h2>${I?'Showroom':'Client'}</h2>${ED&&d.lock?`<div class="msg err" style="margin:0 0 8px">${esc(d.lock)} : le salon (forme, cotes, formule, options de fabrication) ne peut plus changer. Tu peux corriger le client, le transport, la remise et les remarques.</div>`:''}${isG()&&!plein&&!DV&&!ED?`<label class="f">Type de commande</label>${seg('type',['Client','Showroom (essai)'],I?'Showroom (essai)':'Client')}`:''}
     <label class="f">Point de vente</label>${isG()?`<div class="seg" role="group">${srList().map(x=>`<button type="button" data-sr="${x.id}" aria-pressed="${d.sr===x.id}">Showroom ${esc(x.nom)}</button>`).join('')}</div>`:`<p style="margin:0"><b>${esc(srNom({sr:srMe()}))}</b></p>`}
     <label class="f" for="cN">${I?'Nom (vide = nom du showroom)':DV?'Nom du client (facultatif)':'Nom et prénom'}</label><input type="text" id="cN" value="${esc(d.client.nom)}" autocomplete="off">
     ${I?`<label class="f" for="cV">Ville</label><input type="text" id="cV" value="${esc(d.client.ville)}"><p class="muted" style="font-size:.85rem;margin:6px 0 0">Commande pour le showroom : sans paiement, hors des ${st.quota} salons de la promo.</p>`:`<label class="f" for="cT">Téléphone WhatsApp${DV?' (facultatif)':''}</label><input type="tel" id="cT" inputmode="tel" value="${esc(d.client.tel)}">
@@ -13270,8 +13298,8 @@ function vNew(){if(isOp()||isLiv())return go(home());const st=S.settings,DV=VIEW
     <label class="f" for="oN">Remarques</label><textarea id="oN" rows="2">${esc(d.notes)}</textarea></div>
    <div class="card"><h2>Prix</h2><div id="sum"></div></div>`}<p id="nE" class="msg err" hidden></p>
    ${I?'':'<div class="sum" id="bar" aria-live="polite"></div>'}
-   <button class="btn pri full" id="bSave" style="margin-top:10px">${DV?'Enregistrer le devis':I?'Enregistrer la commande showroom':'Enregistrer la réservation'}</button>${DV?'<button class="btn full" id="bDvX" style="margin-top:8px">Annuler</button>':''}`);
-  if($('bDvX'))$('bDvX').onclick=()=>{DDRAFT=null;go('devis');};
+   <button class="btn pri full" id="bSave" style="margin-top:10px">${ED?'Enregistrer les modifications':DV?'Enregistrer le devis':I?'Enregistrer la commande showroom':'Enregistrer la réservation'}</button>${DV||ED?'<button class="btn full" id="bDvX" style="margin-top:8px">Annuler</button>':''}`);
+  if($('bDvX'))$('bDvX').onclick=()=>{if(ED){EDRAFT=null;return go('set');}DDRAFT=null;go('devis');};
   const rd=()=>{d.client.nom=$('cN').value;d.client.ville=$('cV').value;if(!I){d.client.tel=$('cT').value;d.client.quartier=$('cQ').value;d.vitres=$('oV').checked;d.zoneId=$('oZ').value;d.remise=$('oR')?Math.max(0,+$('oR').value||0):0;}
     d.lg={fond:$('lF').value,rg:d.forme==='Droit'?'':$('lG').value,rd:d.forme==='U'?$('lD').value:''};{const pv=profV('lP');if(pv!==undefined){if(pv==null)delete d.prof;else d.prof=pv;}}d.notes=$('oN').value;['g','d'].forEach(c=>{if($('aW'+c))d.acc[c].w=$('aW'+c).value;if($('aH'+c))d.acc[c].h=$('aH'+c).value;});if($('oG'))d.gue=gueN($('oG').value);if($('oM')){d.mat=$('oM').checked;d.tis=$('oT').checked;d.tisM=d.tis?($('oTm')?$('oTm').value:(tissusL()[0]||'')):'';}d.dos=dosF(d.forme,d.dos);};
   const sm=()=>{rd();if($('lP'))$('lP').placeholder='auto : '+profAuto(d);if(I)return;const L=lignes(d),t=totalOf(d);$('sum').innerHTML=`<table><tbody>${L.map(([l,m])=>`<tr><td>${esc(l)}</td><td class="n">${fmt(m)}</td></tr>`).join('')}
@@ -13286,6 +13314,7 @@ function vNew(){if(isOp()||isLiv())return go(home());const st=S.settings,DV=VIEW
     if(!d.client.nom.trim())return err(I?'Le nom du showroom est obligatoire.':'Le nom du client est obligatoire.');if(!I&&telN(d.client.tel).length<9)return err('Le téléphone WhatsApp du client est obligatoire.');
     if(!(+d.lg.fond>0))return err('Indique au moins la longueur du fond.');
     if(cotesMin(d.forme,d.lg))return err(cotesMin(d.forme,d.lg));if(accKo(d.acc))return err(accKo(d.acc));if(profKo(typeof d.prof==='number'?d.prof:null))return err(profKo(d.prof));d.acc=accN(d.acc);d.dos=dosF(d.forme,d.dos);d.gue=gueN(d.gue);d.mat=!!d.mat;d.tis=!!d.tis;d.tisM=d.tis?String(d.tisM||''):'';
+    if(ED)return editSave(d);
     if(I){const c=nextCode(true),now=new Date().toISOString(),o={id:uid(),...c,createdAt:now,vendeurId:ME.id,interne:true,sr:d.sr,canal:'Showroom',client:{nom:d.client.nom.trim(),tel:'',ville:d.client.ville,quartier:''},forme:d.forme,form:formOf(d),table:+d.table===120?120:110,acc:accN(d.acc),dos:dosF(d.forme,d.dos),gue:gueN(d.gue),mat:!!d.mat,tis:!!d.tis,tisM:d.tis?String(d.tisM||''):'',...(typeof d.prof==='number'?{prof:d.prof}:{}),lg:{...d.lg},vitres:false,zoneId:'',remise:0,remiseMotif:'',notes:d.notes,pays:[],releve:{...d.lg,form:formOf(d),table:+d.table===120?120:110,acc:accN(d.acc),dos:dosF(d.forme,d.dos),gue:gueN(d.gue),mat:!!d.mat,tis:!!d.tis,tisM:d.tis?String(d.tisM||''):'',prof:typeof d.prof==='number'?d.prof:null,notes:d.notes,date:now,par:ME.id}};
       if(!(await addOrder(o,GP,err)))return;DRAFT=null;flash('Commande showroom '+o.code+' enregistrée. Valide-la pour la production.');return go('ord',o.id);}
     if(d.remise>0&&!ONLINE&&!S.users.some(u=>u.role==='gerant'&&u.pin===GP))return err('Remise refusée : il faut le code du gérant.');
@@ -13388,7 +13417,8 @@ function bonPdf(o){const {jsPDF}=window.jspdf,d=new jsPDF({unit:'mm',format:'a4'
 /* ---------- réglages (gérant) ---------- */
 function vSet(){if(!isG())return go('list');const st=S.settings;
   const num=(k,l,u)=>`<div><label class="f" for="s_${k}">${l}</label><input type="number" class="num" id="s_${k}" data-k="${k}" step="any" value="${st[k]}" aria-label="${l} (${u})"></div>`;
-  shell('Promo Salon <b>Bois</b>','Réglages',`<div class="card"><h2>Panneaux reçus</h2><p class="muted" style="font-size:.85rem;margin:0 0 6px">Format des plaques de l’arrivage, en cm. Il sert aux prochains lots (aussi modifiable dans Production → Lancer un lot) ; le format d’un lot déjà lancé se change dans sa carte.</p>${panForm(panSet(),'sp',false)}</div>
+  shell('Promo Salon <b>Bois</b>','Réglages',`<div class="card" id="cCmd"><h2>Modifier ou supprimer une commande</h2><input type="text" inputmode="search" id="sCq" placeholder="Code, numéro, nom ou téléphone" aria-label="Chercher une commande" value="${esc(SCQ)}" autocomplete="off"><div id="sCl">${cmdRows()}</div><p class="muted" style="font-size:.85rem;margin:8px 0 0">Supprimer efface la commande pour tout le monde (lots et tournées compris) ; son numéro n’est pas réutilisé. Pour garder une trace, annule-la plutôt depuis sa fiche.</p></div>
+   <div class="card"><h2>Panneaux reçus</h2><p class="muted" style="font-size:.85rem;margin:0 0 6px">Format des plaques de l’arrivage, en cm. Il sert aux prochains lots (aussi modifiable dans Production → Lancer un lot) ; le format d’un lot déjà lancé se change dans sa carte.</p>${panForm(panSet(),'sp',false)}</div>
    <div class="card"><h2>Offre et prix</h2><div class="g2">${num('base1','Formule 1 : salon + 2 guéridons (DH)','DH')}${num('base','Formule 2 : avec la table (DH)','DH')}${num('pTabSeul','Table ajoutée après le relevé des cotes (DH)','DH')}${num('mlBase','Métrage compris (ml)','ml')}${num('pMl','Mètre en plus (DH)','DH')}${num('arr','Mètre en plus compté par tranche entière de (m)','m')}${num('tolMl','Dépassement toléré sans supplément (m)','m')}${num('pVit','Vitres table + 2 guéridons (DH)','DH')}${num('pVitG','Vitres des 2 guéridons, formule 1 (DH)','DH')}${num('pTab','Accoudoir tablette : supplément par accoudoir (DH)','DH')}${num('pTir','Accoudoir à tiroir : supplément par accoudoir (DH)','DH')}${num('pDos','Dossier : prix au mètre (DH)','DH')}${num('pGue','Guéridon en plus : prix par pièce (DH)','DH')}${num('pMat','Matelas : prix au mètre (DH)','DH')}${num('pTis','Tissu, couture et coussins : prix au mètre (DH)','DH')}<div id="tisBox" style="grid-column:1/-1"><label class="f">Tissus proposés aux clients (selon la disponibilité)</label>${tissusL(st).map((n,i)=>`<div class="row" style="margin-bottom:6px"><input type="text" data-tis="${i}" value="${esc(n)}" aria-label="Nom du tissu ${i+1}" style="flex:1 1 140px"><button type="button" class="btn sm bad" data-tisd="${i}">Supprimer</button></div>`).join('')||'<p class="muted" style="margin:0 0 6px">Aucun tissu proposé pour le moment.</p>'}<div class="row"><input type="text" id="tisN" placeholder="Nouveau tissu" aria-label="Nom du nouveau tissu" style="flex:1 1 140px"><button type="button" class="btn sm" id="tisAdd">Ajouter</button></div></div>${num('acPct','Acompte (%)','%')}</div></div>
    <div class="card"><h2>Ventes et livraisons</h2><div class="g2">${num('quota','Nombre de salons à vendre','salons')}${num('resH','Réservation sans acompte (heures)','h')}${num('rythme','Salons avec table livrés par semaine','salons')}${num('kF','Salon sans table : fabrication plus rapide (×)','×')}${num('tirN','Premiers salons qui participent au tirage','salons')}<div><label class="f" for="s_liv0">Semaine des premières livraisons</label><input type="date" id="s_liv0" data-k="liv0" value="${esc(st.liv0)}"></div></div></div>
    <div class="card"><h2>Livraison</h2><div class="g2">${num('capCam','Salons par camion (maximum conseillé)','salons')}</div><p class="muted" style="font-size:.85rem;margin:8px 0 0">Les salons prêts sont regroupés en tournées. Contrôle et regroupement du voyage la veille, solde encaissé avant le montage, photo du salon monté à la fin.</p></div>
@@ -13407,6 +13437,7 @@ function vSet(){if(!isG())return go('list');const st=S.settings;
     <button class="btn sm" id="uAdd" style="margin-top:8px">Ajouter</button></div>
    <div class="card"><h2>Bon de commande</h2><label class="f" for="s_marque">Nom affiché</label><input type="text" id="s_marque" data-k="marque" value="${esc(st.marque)}"><label class="f">Showrooms : nom et adresse affichés sur le bon (jamais l’adresse de l’atelier)</label>${srList().map((x,i)=>`<div class="row" style="margin-bottom:6px"><input type="text" data-srk="nom" data-sri="${i}" value="${esc(x.nom)}" aria-label="Nom du showroom ${i+1}" style="flex:1 1 110px"><input type="text" data-srk="adresse" data-sri="${i}" value="${esc(x.adresse||'')}" aria-label="Adresse du showroom ${i+1}" style="flex:3 1 200px">${srList().length>1?`<button class="btn sm bad" data-srd="${x.id}">Supprimer</button>`:''}</div>`).join('')}<button class="btn sm" id="srAdd">Ajouter un showroom</button><label class="f" for="s_tel">WhatsApp affiché</label><input type="text" id="s_tel" data-k="tel" value="${esc(st.tel)}"></div>
    <div class="card"><h2>Essais</h2><div class="row">${ONLINE?'':'<button class="btn sm" id="bEx">Charger des commandes d’exemple</button>'}<button class="btn sm bad" id="bRaz">Effacer toutes les commandes</button></div></div>`);
+  cmdBind();$('sCq').oninput=e=>{SCQ=e.target.value;$('sCl').innerHTML=cmdRows();cmdBind();};
   document.querySelectorAll('[data-srk]').forEach(el=>el.onchange=()=>{const L=JSON.parse(JSON.stringify(srList()));L[+el.dataset.sri][el.dataset.srk]=el.value.trim();if(!L[+el.dataset.sri].nom){flash('Le nom du showroom est obligatoire.','err');return vSet();}st.showrooms=L;Store.save();});
   document.querySelectorAll('[data-srd]').forEach(b=>b.onclick=()=>sur(b,()=>{const id=b.dataset.srd,nc=S.orders.filter(o=>o.sr===id).length,nv=S.users.filter(u=>!u.suppr&&u.role==='vendeur'&&u.sr===id).length;
     if(nc||nv){flash('Showroom encore utilisé : '+[nc?nc+' commande'+(nc>1?'s':''):'',nv?nv+' vendeur'+(nv>1?'s':''):''].filter(Boolean).join(' et ')+'. Rattache-les d’abord à un autre showroom.','err');return vSet();}
@@ -14335,6 +14366,7 @@ const Net=(()=>{
     for(const o of S.orders){if(o._sk)continue;const b=BASE.orders[o.id];if(!b){if(o._wait)continue;ch.push({k:'order',id:o.id,new:J(o)});}else{const ops=diff(b,o,[],[]);if(ops.length)ch.push({k:'order',id:o.id,ops});}}
     if(isGer()){
       for(const l of S.lots){const b=BASE.lots[l.id];if(!b)ch.push({k:'lot',id:l.id,new:J(l)});else{const ops=diff(b,l,[],[]);if(ops.length)ch.push({k:'lot',id:l.id,ops});}}
+      for(const id of Object.keys(BASE.orders))if(!S.orders.some(o=>o.id===id))ch.push({k:'order',id,del:1});
       for(const id of Object.keys(BASE.lots))if(!S.lots.some(l=>l.id===id))ch.push({k:'lot',id,del:1});
       for(const t of tours()){const b=BASE.tours[t.id];if(!b)ch.push({k:'tour',id:t.id,new:J(t)});else{const ops=diff(b,t,[],[]);if(ops.length)ch.push({k:'tour',id:t.id,ops});}}
       for(const id of Object.keys(BASE.tours))if(!tours().some(t=>t.id===id))ch.push({k:'tour',id,del:1});
@@ -14353,7 +14385,7 @@ const Net=(()=>{
           if(c.k==='user'){delete b.pin;if(cur)delete cur.pin;}map[c.id]=b;}
         else if(map[c.id]){applyOps(map[c.id],c.ops);if(c.k==='user'){delete map[c.id].pin;if(cur)delete cur.pin;}}}
       else{bad=ERR[r.err]||('Changement refusé ('+r.err+').');
-        if(cur){if(map[c.id])sync(cur,map[c.id]);else arr.splice(arr.indexOf(cur),1);}}});
+        if(cur){if(map[c.id])sync(cur,map[c.id]);else arr.splice(arr.indexOf(cur),1);}else if(c.del&&map[c.id])arr.push(J(map[c.id]));}});
     return bad;}
   async function flush(){if(!token)return;if(busy){again=true;return;}busy=true;let bad='';
     try{const ch=changes();
@@ -14416,7 +14448,7 @@ const Net=(()=>{
 })();
 
 /* ---------- démarrage ---------- */
-function render(){const V={login:vLogin,dash:vDash,list:vList,devis:vDevis,dv:vNew,new:vNew,ord:vOrd,set:vSet,prod:vProd,op:vOp,sal:vSal,tour:vTour,liv:vLiv,ls:vLs};closeScanner();if(ME&&isOp()&&!['op','sal'].includes(VIEW))VIEW='op';if(ME&&isLiv()&&!['liv','ls'].includes(VIEW))VIEW='liv';(V[VIEW]||vLogin)();uiSoon();}
+function render(){const V={login:vLogin,dash:vDash,list:vList,devis:vDevis,dv:vNew,ed:vNew,new:vNew,ord:vOrd,set:vSet,prod:vProd,op:vOp,sal:vSal,tour:vTour,liv:vLiv,ls:vLs};closeScanner();if(ME&&isOp()&&!['op','sal'].includes(VIEW))VIEW='op';if(ME&&isLiv()&&!['liv','ls'].includes(VIEW))VIEW='liv';(V[VIEW]||vLogin)();uiSoon();}
 Store.load();
 {const q=new URLSearchParams(location.search),code=q.get('s');PENDP=q.get('p');
  if(code)vSuivi(code);
