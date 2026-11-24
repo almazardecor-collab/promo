@@ -13125,6 +13125,7 @@ function vList(){if(isOp()||isLiv())return go(home());let mine=isG()?S.orders:S.
 /* ---------- devis : robot WhatsApp + devis faits sur place dans l'app ---------- */
 let DEV=null,DEVQ='',DEVLOAD=false,DEVLIV='',DDRAFT=null,DEVMSG=null;
 const devTel=t=>{const d=telN(t);return d.length>=9?'0'+d.slice(-9):'';};
+const ar3d=(c,nom)=>{const lg=c.lg||{},j={fo:c.forme||'U',f:+lg.fond||0,g:+lg.rg||0,d:+lg.rd||0,t:c.table||110,acc:c.acc,dos:c.dos,mat:!!c.mat,tis:!!c.tis,nom:nom||''};return btoa(unescape(encodeURIComponent(JSON.stringify(j)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');};
 const devOrder=d=>{const t9=telN(d.tel).slice(-9);return t9.length<9?null:S.orders.find(o=>!o.interne&&telN(o.client&&o.client.tel).slice(-9)===t9)||null;};
 const devEdit=d=>isG()||d.par===ME.id||(!d.par&&!d.test);
 const devDel=d=>isG()||d.par===ME.id;
@@ -13148,6 +13149,7 @@ function vDevis(){if(isOp()||isLiv())return go(home());
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
        ${d.url?`<a class="btn sm" href="${esc(d.url)}" target="_blank" rel="noopener">PDF</a>`:`<button class="btn sm" data-dp="${esc(d.id)}">PDF</button>`}
        ${tel?`<a class="btn sm" href="https://wa.me/${telWa(d.tel)}?text=${encodeURIComponent('Bonjour'+(d.nom?' '+d.nom:'')+', voici votre devis '+S.settings.marque+' '+(d.code||'')+'.')}" target="_blank" rel="noopener">WhatsApp</a>`:''}
+       <a class="btn sm" href="ar.html?c=${ar3d(c,d.nom)}" target="_blank" rel="noopener">3D</a>
        ${devEdit(d)?`<button class="btn sm" data-de="${esc(d.id)}">Modifier</button>`:''}
        ${o?`<button class="btn sm" data-o="${o.id}">Voir la commande</button>`:`<button class="btn sm pri" data-dv="${esc(d.id)}">Créer la commande</button>`}
        ${devDel(d)?`<button class="btn sm bad" data-dx="${esc(d.id)}">Supprimer</button>`:''}
