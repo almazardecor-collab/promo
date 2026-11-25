@@ -13149,6 +13149,7 @@ function vDevis(){if(isOp()||isLiv())return go(home());
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
        ${d.url?`<a class="btn sm" href="${esc(d.url)}" target="_blank" rel="noopener">PDF</a>`:`<button class="btn sm" data-dp="${esc(d.id)}">PDF</button>`}
        ${tel?`<a class="btn sm" href="https://wa.me/${telWa(d.tel)}?text=${encodeURIComponent('Bonjour'+(d.nom?' '+d.nom:'')+', voici votre devis '+S.settings.marque+' '+(d.code||'')+'.')}" target="_blank" rel="noopener">WhatsApp</a>`:''}
+       ${tel?`<a class="btn sm pri" href="tel:+${telWa(d.tel)}">📞 Appeler</a>`:''}
        <a class="btn sm" href="ar.html?c=${ar3d(c,d.nom)}" target="_blank" rel="noopener">3D</a>
        ${devEdit(d)?`<button class="btn sm" data-de="${esc(d.id)}">Modifier</button>`:''}
        ${o?`<button class="btn sm" data-o="${o.id}">Voir la commande</button>`:`<button class="btn sm pri" data-dv="${esc(d.id)}">Créer la commande</button>`}
