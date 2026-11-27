@@ -93,6 +93,7 @@ nav.bot.n6{gap:2px;padding-left:max(3px,env(safe-area-inset-left));padding-right
 nav.bot.n6 button{font-size:.8rem;padding:8px 1px;min-width:0}
 nav.bot.n7{gap:1px}
 nav.bot.n7 button{font-size:.7rem;padding:8px 0;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+nav.bot.n8 button{font-size:.64rem;letter-spacing:-.02em}
 .it.sel{cursor:pointer}.it.sel input{width:22px;height:22px;vertical-align:middle;margin:0 4px 0 0}
 .solde{font-family:var(--f-num);font-size:2.2rem;font-weight:600;margin:0 0 4px;color:var(--accent)}
 .thumb.big{display:block;width:auto;max-width:100%;height:auto;max-height:300px;margin-top:8px}
@@ -13054,11 +13055,11 @@ let VIEW='login',ARG=null,FLASH=null,FIL='tous',Q='';
 function go(v,a){VIEW=v;ARG=a??null;render();window.scrollTo(0,0);}
 function flash(t,k){FLASH={t,k:k||'ok'};}
 function shell(title,sub,body,tabs=true){const f=FLASH;FLASH=null;
-  const T=isG()?[['dash','Tableau'],['list','Commandes'],['devis','Devis'],['new','Nouvelle'],['prod','Production'],['tour','Livraison'],['set','Réglages']]:isOp()?[['op','Mon travail']]:isLiv()?[['liv','Mes livraisons']]:[['list','Commandes'],['devis','Devis'],['new','Nouvelle']];
+  const T=isG()?[['dash','Tableau'],['list','Commandes'],['devis','Devis'],['appels','Appels'],['new','Nouvelle'],['prod','Production'],['tour','Livraison'],['set','Réglages']]:isOp()?[['op','Mon travail']]:isLiv()?[['liv','Mes livraisons']]:[['list','Commandes'],['devis','Devis'],['appels','Appels'],['new','Nouvelle']];
   document.getElementById('root').innerHTML=`<div class="app"><header class="top"><h1>${title}${sub?`<small>${sub}</small>`:''}</h1>${ME?`<button class="btn sm" id="bOut">${esc(ME.nom)} · Quitter</button>`:''}</header>
   ${ONLINE?'<div class="demo" id="net" hidden></div>':`<div class="demo">Version d’essai : les données sont enregistrées sur cet appareil seulement${MEM?' (mémoire du navigateur indisponible : elles seront perdues à la fermeture)':''}.</div>`}
   ${f?`<div class="msg ${f.k}" role="status">${esc(f.t)}</div>`:''}${body}</div>
-  ${ME&&tabs?`<nav class="bot${T.length>5?' n6':''}${T.length>6?' n7':''}">${T.map(([v,l])=>`<button data-go="${v}"${VIEW===v||(VIEW==='dv'&&v==='devis')?' aria-current="page"':''}>${l}</button>`).join('')}</nav>`:''}`;
+  ${ME&&tabs?`<nav class="bot${T.length>5?' n6':''}${T.length>6?' n7':''}${T.length>7?' n8':''}">${T.map(([v,l])=>`<button data-go="${v}"${VIEW===v||(VIEW==='dv'&&v==='devis')?' aria-current="page"':''}>${l}</button>`).join('')}</nav>`:''}`;
   const o=$('bOut');if(o)o.onclick=()=>{if(ONLINE)return Net.logout();ME=null;sessSet(null);go('login');};
   document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go,b.dataset.arg));
   document.querySelectorAll('[data-sal]').forEach(b=>b.onclick=()=>go('sal',{id:b.dataset.sal}));document.querySelectorAll('[data-ls]').forEach(b=>b.onclick=()=>go('ls',{id:b.dataset.ls}));if(ONLINE)Net.rendered();}
@@ -13169,6 +13170,46 @@ function vDevis(){if(isOp()||isLiv())return go(home());
   document.querySelectorAll('[data-dv]').forEach(b=>b.onclick=()=>{const d=find(b.dataset.dv);if(!d)return;const c=d.commande||{};
     DRAFT={...devDraft(d),interne:false,canal:d.par?'Showroom':'WhatsApp',remise:isG()?Math.max(0,+c.remise||0):0,remiseMotif:'',notes:(c.notes&&c.notes!=='Réservée par le robot WhatsApp'?c.notes:'')||('Devis '+(d.code||''))};
     flash('Commande préremplie depuis le devis : vérifie puis enregistre.'+(DRAFT.remise>0?' La remise demande ton code.':''));go('new');});}
+/* ---------- Gestion des appels téléphoniques (27/11) : clients qui ont accepté l'appel ---------- */
+let APL=null,APLLOAD=false,APLF='oui',APLMSG=null,APLT=0;
+function aplLoad(){if(APLLOAD)return;APLLOAD=true;APLT=Date.now();Net.appels().then(r=>{APLLOAD=false;APL=r&&r.ok?r.appels:{err:(r&&r.err)||'net'};if(VIEW==='appels')vAppels();});}
+function vAppels(){if(isOp()||isLiv())return go(home());
+  if(!ONLINE){shell('Promo Salon <b>Bois</b>','Gestion appels téléphoniques','<p class="muted">Disponible seulement dans la version en ligne.</p>');return;}
+  if(APL===null||Date.now()-APLT>20000)aplLoad();
+  const L=Array.isArray(APL)?APL:[],n=k=>L.filter(a=>a.statut===k).length,msg=APLMSG;APLMSG=null;
+  const F=[['oui','📞 À appeler'],['rappel','🔁 Rappel demandé'],['fait','✅ Confirmés']];
+  const vis=L.filter(a=>a.statut===APLF);
+  const heure=d=>d?new Date(d).toLocaleString('fr-FR',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+  const carte=a=>{const d=a.devis||{},lg=d.lg||{},cot=[lg.fond,lg.rg,lg.rd].filter(x=>x!==''&&x!=null).join(' / '),tel=devTel(a.tel);
+    const coul=a.statut==='oui'?'#1f8b4c':a.statut==='rappel'?'#b7791f':'#5d6966',fond=a.statut==='oui'?'#e7f5ec':a.statut==='rappel'?'#fdf6e3':'#fff';
+    return `<div class="card" style="padding:12px;margin-bottom:8px;border:2px solid ${coul};background:${fond}">
+     <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>${esc(a.nom||'Client')}</b>${a.cmd?'<span class="tag conf">Commande</span>':''}</div>
+     <div style="font-size:1.15rem;font-weight:700;margin:4px 0">${esc(tel)}</div>
+     <div style="margin:2px 0"><b>Quand l’appeler :</b> ${esc(a.creneau||'—')}</div>
+     <div class="muted" style="font-size:.85rem">${a.statut==='oui'?'Accepté le '+heure(a.at):a.statut==='rappel'?'Message de rappel envoyé le '+heure(a.maj)+' — en attente de sa réponse':'Confirmé le '+heure(a.maj)}${a.parNom&&a.statut!=='oui'?' · par '+esc(a.parNom):''}${a.essais?' · '+a.essais+' essai'+(a.essais>1?'s':'')+' sans réponse':''}</div>
+     ${d.code?`<div style="margin-top:4px">Salon ${esc(d.forme||'')} ${esc(cot)} cm · ${esc(d.ville||'')} · <b>${fmt(+d.total)} DH</b> <span class="muted">(${esc(d.code)})</span></div>`:''}
+     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
+      <a class="btn sm pri" href="tel:+${telWa(a.tel)}">📞 Appeler</a>
+      <a class="btn sm" href="https://wa.me/${telWa(a.tel)}" target="_blank" rel="noopener">WhatsApp</a>
+      ${d.url?`<a class="btn sm" href="${esc(d.url)}" target="_blank" rel="noopener">Devis PDF</a>`:''}
+     </div>
+     ${a.statut!=='fait'?`<div style="display:flex;gap:6px;margin-top:8px">
+      <button class="btn" style="flex:1;background:#1f8b4c;color:#fff;border-color:#1f8b4c" data-aok="${esc(a.tel)}">✅ Confirmé</button>
+      <button class="btn" style="flex:1;background:#b7791f;color:#fff;border-color:#b7791f" data-arp="${esc(a.tel)}">🔁 Rappeler plus tard</button></div>`:''}
+     ${msg&&msg.tel===a.tel?`<p role="status" style="margin:8px 0 0;font-size:.9rem${msg.err?';color:#b42318':''}">${esc(msg.t)}</p>`:''}</div>`;};
+  const body=APL===null?'<p class="muted">Chargement…</p>':!Array.isArray(APL)?`<div class="msg err">Impossible de charger les appels${APL.err==='auth'?' : reconnecte-toi.':' : vérifie la connexion.'}</div>`:
+    (vis.length?vis.map(carte).join(''):`<p class="muted">${APLF==='oui'?'Aucun client à appeler pour l’instant.':APLF==='rappel'?'Aucun rappel en attente.':'Aucun appel confirmé pour l’instant.'}</p>`);
+  shell('Promo Salon <b>Bois</b>','Gestion appels téléphoniques',`<div style="display:flex;gap:6px;margin-bottom:10px">${F.map(([k,l])=>`<button class="btn sm${APLF===k?' pri':''}" style="flex:1" data-af="${k}">${l} (${n(k)})</button>`).join('')}<button class="btn sm" id="aR" aria-label="Actualiser">↻</button></div>
+   <p class="muted" style="font-size:.85rem;margin:0 0 10px">✅ <b>Confirmé</b> : tu as eu le client. 🔁 <b>Rappeler plus tard</b> : occupé, pas de réseau ou pas de réponse — le robot lui écrit sur WhatsApp pour demander quand le rappeler ; dès qu’il répond, il revient dans « À appeler ».</p>${body}`);
+  document.querySelectorAll('[data-af]').forEach(b=>b.onclick=()=>{APLF=b.dataset.af;vAppels();});
+  $('aR').onclick=()=>{APL=null;vAppels();};
+  const maj=(tel,f)=>{const a=L.find(x=>x.tel===tel);if(a)f(a);const y=window.scrollY;vAppels();window.scrollTo(0,y);};
+  document.querySelectorAll('[data-aok]').forEach(b=>b.onclick=async()=>{const tel=b.dataset.aok;b.disabled=true;const r=await Net.appelOk(tel);
+    if(r&&r.ok){flash('Appel confirmé.');maj(tel,a=>{a.statut='fait';a.maj=r.maj;a.parNom=ME.nom;});}else{APLMSG={tel,t:'Échec : '+((r&&r.err)||'réseau'),err:1};maj(tel,()=>{});}});
+  document.querySelectorAll('[data-arp]').forEach(b=>b.onclick=()=>sur(b,async()=>{const tel=b.dataset.arp;b.disabled=true;b.textContent='Envoi…';const r=await Net.rappel(tel);
+    if(r&&r.ok){flash('Message envoyé au client : il recevra la question pour le rappeler.');maj(tel,a=>{a.statut='rappel';a.maj=r.maj;a.essais=r.essais;a.parNom=ME.nom;});}
+    else{APLMSG={tel,err:1,t:r&&r.err==='fenetre'?'Le client n’a pas écrit depuis plus de 24 h : WhatsApp bloque le message automatique. Écris-lui toi-même avec le bouton WhatsApp.':'Échec de l’envoi ('+((r&&r.err)||'réseau')+').'};maj(tel,()=>{});}}));
+}
 /* brouillon du formulaire à partir d'un devis enregistré */
 function devDraft(d){const c=JSON.parse(JSON.stringify(d.commande||{})),base=newDraft(),cl=c.client||{};
   return {...base,forme:['U','L','Droit'].includes(c.forme)?c.forme:'U',form:String(c.form)==='1'?1:2,table:+c.table===120?120:110,acc:c.acc?accN(c.acc):base.acc,dos:dosN(c.dos),gue:gueN(c.gue),mat:!!c.mat,tis:!!c.tis,tisM:String(c.tisM||''),vitres:!!c.vitres,
@@ -14468,11 +14509,14 @@ const Net=(()=>{
   async function suivi(code,k4){try{return await rpc('psb_suivi',{p_code:code,p_k4:k4});}catch(e){return {err:'net'};}}
   async function dv(fn,args){if(!token)return {err:'auth'};try{const r=await rpc(fn,{p_token:token,...args});if(r&&r.err==='auth')lost();return r||{err:'err'};}catch(e){return {err:'net'};}}
   const img=v=>!v?'':v.startsWith('ph:')?(PH[v.slice(3)]?`src="${PH[v.slice(3)]}"`:`src="${BLANK}" data-ph="${esc(v.slice(3))}"`):`src="${v}"`;
-  return {devis:()=>dv('psb_devis_list',{}),devisSave:d=>dv('psb_devis_save',{p_devis:d}),devisDel:id=>dv('psb_devis_del',{p_id:id}),login,setup,logout,start,create,photo,reset,suivi,img,rendered,flush,needSetup:()=>!!bootInfo.setup,_dbg:()=>({since,off,busy,pending:changes(),BASE})};
+  async function rappel(tel){if(!token)return {err:'auth'};const c=new AbortController(),t=setTimeout(()=>c.abort(),30000);
+    try{const r=await fetch(CFG.url+'/functions/v1/wa-appel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,tel,action:'rappel'}),signal:c.signal});const j=await r.json();if(j&&j.err==='auth')lost();return j||{err:'err'};}
+    catch(e){return {err:'net'};}finally{clearTimeout(t);}}
+  return {appels:()=>dv('psb_appel_list',{}),appelOk:tel=>dv('psb_appel_ok',{p_tel:tel}),rappel,devis:()=>dv('psb_devis_list',{}),devisSave:d=>dv('psb_devis_save',{p_devis:d}),devisDel:id=>dv('psb_devis_del',{p_id:id}),login,setup,logout,start,create,photo,reset,suivi,img,rendered,flush,needSetup:()=>!!bootInfo.setup,_dbg:()=>({since,off,busy,pending:changes(),BASE})};
 })();
 
 /* ---------- démarrage ---------- */
-function render(){const V={login:vLogin,dash:vDash,list:vList,devis:vDevis,dv:vNew,ed:vNew,new:vNew,ord:vOrd,set:vSet,prod:vProd,op:vOp,sal:vSal,tour:vTour,liv:vLiv,ls:vLs};closeScanner();if(ME&&isOp()&&!['op','sal'].includes(VIEW))VIEW='op';if(ME&&isLiv()&&!['liv','ls'].includes(VIEW))VIEW='liv';(V[VIEW]||vLogin)();uiSoon();}
+function render(){const V={login:vLogin,dash:vDash,list:vList,devis:vDevis,appels:vAppels,dv:vNew,ed:vNew,new:vNew,ord:vOrd,set:vSet,prod:vProd,op:vOp,sal:vSal,tour:vTour,liv:vLiv,ls:vLs};closeScanner();if(ME&&isOp()&&!['op','sal'].includes(VIEW))VIEW='op';if(ME&&isLiv()&&!['liv','ls'].includes(VIEW))VIEW='liv';(V[VIEW]||vLogin)();uiSoon();}
 Store.load();
 {const q=new URLSearchParams(location.search),code=q.get('s');PENDP=q.get('p');
  if(code)vSuivi(code);
