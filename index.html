@@ -12944,6 +12944,10 @@ const fdt=d=>d?new Date(d).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit'
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const telN=t=>String(t||'').replace(/\D/g,'');
 const telWa=t=>{let s=telN(t);if(s.startsWith('00'))s=s.slice(2);if(s.startsWith('0'))s='212'+s.slice(1);return s;};
+/* 27/11 : côté équipe, les liens WhatsApp ouvrent WhatsApp Business sur Android (sinon WhatsApp normal / web) */
+const ANDROID=/Android/i.test(navigator.userAgent);
+const waUrl=(n,t)=>{const q=t?'text='+encodeURIComponent(t):'',web='https://wa.me/'+n+(q?'?'+q:'');return ANDROID?'intent://send/?phone='+n+(q?'&'+q:'')+'#Intent;scheme=whatsapp;package=com.whatsapp.w4b;S.browser_fallback_url='+encodeURIComponent(web)+';end':web;};
+const waOpen=(n,t)=>{const u=waUrl(n,t);if(ANDROID)location.href=u;else window.open(u,'_blank');};
 
 /* ---------- données ---------- */
 const DEFSET={base:14900,base1:10900,pTabSeul:4500,pVitG:300,tirN:30,kF:1.5,mlBase:10,pMl:800,pVit:800,pTab:400,pTir:0,pDos:400,pGue:1500,pMat:650,pTis:1300,tissus:'Tissu 1, Tissu 2',acPct:75,resH:48,quota:108,rythme:7,liv0:'2026-12-21',arr:1,tolMl:0,
@@ -13150,7 +13154,7 @@ function vDevis(){if(isOp()||isLiv())return go(home());
       <div style="margin:4px 0"><b>${fmt(+d.total)} DH</b> <span class="muted">· acompte ${fmt(+d.acompte)} DH</span></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
        ${d.url?`<a class="btn sm" href="${esc(d.url)}" target="_blank" rel="noopener">PDF</a>`:`<button class="btn sm" data-dp="${esc(d.id)}">PDF</button>`}
-       ${tel?`<a class="btn sm" href="https://wa.me/${telWa(d.tel)}?text=${encodeURIComponent('Bonjour'+(d.nom?' '+d.nom:'')+', voici votre devis '+S.settings.marque+' '+(d.code||'')+'.')}" target="_blank" rel="noopener">WhatsApp</a>`:''}
+       ${tel?`<a class="btn sm" href="${waUrl(telWa(d.tel),'Bonjour'+(d.nom?' '+d.nom:'')+', voici votre devis '+S.settings.marque+' '+(d.code||'')+'.')}"${ANDROID?'':' target="_blank"'} rel="noopener">WhatsApp</a>`:''}
        ${tel&&!noCall?`<a class="btn sm pri" href="tel:+${telWa(d.tel)}">📞 Appeler</a>`:''}
        <a class="btn sm" href="ar.html?c=${ar3d(c,d.nom)}" target="_blank" rel="noopener">3D</a>
        ${devEdit(d)?`<button class="btn sm" data-de="${esc(d.id)}">Modifier</button>`:''}
@@ -13190,7 +13194,7 @@ function vAppels(){if(isOp()||isLiv())return go(home());
      ${d.code?`<div style="margin-top:4px">Salon ${esc(d.forme||'')} ${esc(cot)} cm · ${esc(d.ville||'')} · <b>${fmt(+d.total)} DH</b> <span class="muted">(${esc(d.code)})</span></div>`:''}
      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
       <a class="btn sm pri" href="tel:+${telWa(a.tel)}">📞 Appeler</a>
-      <a class="btn sm" href="https://wa.me/${telWa(a.tel)}" target="_blank" rel="noopener">WhatsApp</a>
+      <a class="btn sm" href="${waUrl(telWa(a.tel))}"${ANDROID?'':' target="_blank"'} rel="noopener">WhatsApp</a>
       ${d.url?`<a class="btn sm" href="${esc(d.url)}" target="_blank" rel="noopener">Devis PDF</a>`:''}
      </div>
      ${a.statut!=='fait'?`<div style="display:flex;gap:6px;margin-top:8px">
@@ -13422,7 +13426,7 @@ function vOrd(){if(isOp()||isLiv())return go(home());const o=S.orders.find(x=>x.
   if($('bAnn'))$('bAnn').onclick=e=>{const b=e.currentTarget;if(!b.dataset.armed){b.dataset.armed='1';b.textContent='Confirmer l’annulation';return;}
     o.annule={at:new Date().toISOString(),par:ME.id,motif:o.confirmedAt?'annulée par le gérant':'réservation annulée'};Store.save();flash('Commande annulée.');vOrd();};
   if(!o.interne){$('bPdf').onclick=async()=>{const {blob,name}=bonPdf(o);$('dM').textContent=await shareFile(blob,name,'Bon de commande '+o.code);};
-  $('bWa').onclick=()=>{window.open('https://wa.me/'+telWa(o.client.tel)+'?text='+encodeURIComponent(waText(o)),'_blank');$('dM').textContent='WhatsApp ouvert avec le message. Joins le PDF du bon.';};
+  $('bWa').onclick=()=>{waOpen(telWa(o.client.tel),(waText(o)),'_blank');$('dM').textContent='WhatsApp ouvert avec le message. Joins le PDF du bon.';};
   $('bLien').onclick=async()=>{const u=suiviUrl(o);try{await navigator.clipboard.writeText(u);$('dM').textContent='Lien copié : '+u;}catch(e){$('dM').textContent=u;}};}}
 const waText=o=>`Bonjour ${o.client.nom}, voici votre commande ${S.settings.marque} ${o.code}.\nTotal : ${dh(totalOf(o))} — payé : ${dh(payeOf(o))} — reste : ${dh(resteOf(o))}.${livree(o)?'\nLivré le '+fdate(o.liv.fin.at)+'.':acOk(o)?'\nLivraison prévue '+(o.liv&&o.liv.date?'le '+jourL(o.liv.date):'la semaine du '+fdate(livOf(o)))+'.':'\nLa date de livraison sera fixée à la réception de l’acompte de '+S.settings.acPct+' % (il reste '+dh(acManque(o))+' à verser).'}\nSuivez votre commande : ${suiviUrl(o)}`;
 function shrink(file,max,q){return new Promise((res,rej)=>{const r=new FileReader();r.onerror=rej;r.onload=()=>{const im=new Image();im.onerror=rej;im.onload=()=>{const k=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',q));};im.src=r.result;};r.readAsDataURL(file);});}
@@ -13609,7 +13613,7 @@ function reportBind(o){if(!$('bRep'))return;
     if(new Date(m+'T12:00:00')<=livBase(o)){flash('La nouvelle semaine doit être après la semaine promise ('+fdate(livBase(o))+').','err');return vOrd();}
     o.report={date:m,at:new Date().toISOString(),par:ME.id};Store.save();flash('Livraison reportée à la semaine du '+fdate(livOf(o))+'. Préviens le client.');vOrd();};
   if($('bRepX'))$('bRepX').onclick=()=>{delete o.report;Store.save();flash('Report annulé : la livraison revient à la semaine du '+fdate(livOf(o))+'.');vOrd();};
-  if($('bRepWa'))$('bRepWa').onclick=()=>{window.open('https://wa.me/'+telWa(o.client.tel)+'?text='+encodeURIComponent(`Bonjour ${o.client.nom}, la livraison de votre commande ${S.settings.marque} ${o.code} est reportée à la semaine du ${fdate(livOf(o))}. Nous nous excusons pour ce décalage. Suivez votre commande : ${suiviUrl(o)}`),'_blank');};}
+  if($('bRepWa'))$('bRepWa').onclick=()=>{waOpen(telWa(o.client.tel),(`Bonjour ${o.client.nom}, la livraison de votre commande ${S.settings.marque} ${o.code} est reportée à la semaine du ${fdate(livOf(o))}. Nous nous excusons pour ce décalage. Suivez votre commande : ${suiviUrl(o)}`),'_blank');};}
 /* relevé des cotes : délai après l'acompte */
 const relLimite=o=>{const d=new Date(o.confirmedAt);d.setDate(d.getDate()+Math.max(1,Math.round(+S.settings.relJ||5)));d.setHours(23,59,59,0);return d;};
 const relTard=(o,now=Date.now())=>!!o.confirmedAt&&!o.releve&&!o.interne&&!o.annule&&now>relLimite(o).getTime();
@@ -14266,7 +14270,7 @@ function vTour(){if(!isG())return go(home());const st=S.settings,R=aPlanifier(),
   document.querySelectorAll('[data-tv]').forEach(el=>el.onchange=()=>{tOf(el.dataset.tv).veh=el.value.trim();Store.save();});
   document.querySelectorAll('[data-tpx]').forEach(b=>b.onclick=()=>sur(b,()=>{const t=tOf(b.dataset.tpx);delete t.parti;Store.save();flash('Départ de la tournée '+t.num+' annulé.');vTour();}));
   document.querySelectorAll('[data-tx]').forEach(b=>b.onclick=()=>sur(b,()=>{const t=tOf(b.dataset.tx);tourO(t).forEach(livOut);tours().splice(tours().indexOf(t),1);Store.save();flash('Tournée '+t.num+' supprimée : ses salons reviennent dans les salons prêts.');vTour();}));
-  document.querySelectorAll('[data-wa]').forEach(b=>b.onclick=()=>{const o=S.orders.find(x=>x.id===b.dataset.wa);window.open('https://wa.me/'+telWa(o.client.tel)+'?text='+encodeURIComponent(waJour(o)),'_blank');o.liv.prev={at:new Date().toISOString(),par:ME.id};Store.save();keepY(vTour);});
+  document.querySelectorAll('[data-wa]').forEach(b=>b.onclick=()=>{const o=S.orders.find(x=>x.id===b.dataset.wa);waOpen(telWa(o.client.tel),(waJour(o)),'_blank');o.liv.prev={at:new Date().toISOString(),par:ME.id};Store.save();keepY(vTour);});
   bindTour(()=>keepY(vTour));}
 
 /* ---------- mes livraisons (livreur) ---------- */
@@ -14308,7 +14312,7 @@ function vLs(){const a=ARG||{},o=S.orders.find(x=>x.id===a.id),g=isG();if(!o||(!
     ...(o.interne?[]:[['Solde encaissé avant le montage',du<=0.5,du<=0.5?'rien à encaisser':'à encaisser : '+dh(du)]]),['Montage + photo du salon',livree(o),livree(o)?fdt(L.fin.at)+' · reçu par '+esc(L.fin.recu):'']],cur=etapes.findIndex(e=>!e[1]);
   shell(`Salon <b>${court(o)}</b>`,`${esc(o.code)}${t?' · tournée '+t.num+' · '+jourC(t.date):''}`,`<div class="card"><div class="codeb"><span class="code">${court(o)}</span><span><b>${esc(o.client.nom)}</b><br>${esc(villeDe(o)||'—')}<br><span class="muted">Forme ${esc(o.forme)} : ${cotes(o)} · ${tabTxt(o)}</span></span></div>
      ${adr?`<p style="margin:8px 0 0">${url?`<a class="btn sm" href="${esc(adr)}" target="_blank" rel="noopener">Ouvrir l’adresse dans Maps</a>`:esc(adr)}</p>`:''}
-     ${o.interne||!telN(o.client.tel)?'':`<div class="row" style="margin-top:10px"><a class="btn" href="tel:${telN(o.client.tel)}">Appeler ${esc(o.client.tel)}</a><a class="btn" href="https://wa.me/${telWa(o.client.tel)}" target="_blank" rel="noopener">WhatsApp</a></div>`}</div>
+     ${o.interne||!telN(o.client.tel)?'':`<div class="row" style="margin-top:10px"><a class="btn" href="tel:${telN(o.client.tel)}">Appeler ${esc(o.client.tel)}</a><a class="btn" href="${waUrl(telWa(o.client.tel))}" target="_blank" rel="noopener">WhatsApp</a></div>`}</div>
    <div style="margin-bottom:10px">${box}</div>
    <div class="card"><h2>Étapes</h2><ul class="steps">${etapes.map((e,i)=>`<li class="${e[1]?'done':i===cur?'cur':''}"><span class="dot"></span><span><b>${e[0]}</b>${e[2]?'<br><span class="muted">'+e[2]+'</span>':''}</span></li>`).join('')}</ul></div>
    ${D&&!livree(o)?`<div class="card"><h2>Plan de montage (cm)</h2>${FP.render('liv',D)}${col?`<ol class="colis" style="margin-top:10px">${col.map((c,i)=>`<li><span class="n">${i+1}/${nT}</span> ${esc(c)}</li>`).join('')}</ol>`:''}</div>`:''}
@@ -14345,7 +14349,7 @@ function vLs(){const a=ARG||{},o=S.orders.find(x=>x.id===a.id),g=isG();if(!o||(!
     L.fin={at:new Date().toISOString(),par:ME.id,recu:nom,photo};if(!Store.save()){L.fin.photo='';Store.save();}
     flash('Salon '+court(o)+' livré'+(lpbOuv(o).length?' avec réserve : le gérant est prévenu.':'.')+(o.interne?'':' Envoie le bon de livraison au client.'),lpbOuv(o).length?'err':'ok');vLs();};
   if($('bBl'))$('bBl').onclick=async()=>{const {blob,name}=blPdf(o);$('blM').textContent=await shareFile(blob,name,'Bon de livraison '+o.code);};
-  if($('bWaL'))$('bWaL').onclick=()=>{window.open('https://wa.me/'+telWa(o.client.tel)+'?text='+encodeURIComponent(waLivre(o)),'_blank');$('blM').textContent='WhatsApp ouvert avec le message. Joins le PDF du bon de livraison.';};
+  if($('bWaL'))$('bWaL').onclick=()=>{waOpen(telWa(o.client.tel),(waLivre(o)),'_blank');$('blM').textContent='WhatsApp ouvert avec le message. Joins le PDF du bon de livraison.';};
   /* réserves */
   $('bRv').onclick=async()=>{let note=$('rvN').value.trim(),photo=await photoDe('rvF');if(!note&&!photo){flash('Écris une note ou ajoute une photo pour signaler la réserve.','err');return vLs();}
     if(photo&&ONLINE){try{photo=await Net.photo(photo,o.id,'pb');}catch(x){photo='';if(!note)note='Photo non envoyée (pas de connexion)';}}
@@ -14354,7 +14358,7 @@ function vLs(){const a=ARG||{},o=S.orders.find(x=>x.id===a.id),g=isG();if(!o||(!
   document.querySelectorAll('[data-rvok]').forEach(b=>b.onclick=()=>{const x=L.pb.find(y=>y.id===b.dataset.rvok);x.resolu={at:new Date().toISOString(),par:ME.id};Store.save();flash('Réserve levée sur le salon '+court(o)+'.');vLs();});
   /* gérant */
   if(g){$('lsA').onchange=()=>{const v=$('lsA').value.trim();if(v)L.adr=v;else delete L.adr;Store.save();};
-    if($('bWaJ'))$('bWaJ').onclick=()=>{window.open('https://wa.me/'+telWa(o.client.tel)+'?text='+encodeURIComponent(waJour(o)),'_blank');L.prev={at:new Date().toISOString(),par:ME.id};Store.save();vLs();};
+    if($('bWaJ'))$('bWaJ').onclick=()=>{waOpen(telWa(o.client.tel),(waJour(o)),'_blank');L.prev={at:new Date().toISOString(),par:ME.id};Store.save();vLs();};
     if($('bCtX'))$('bCtX').onclick=e=>sur(e.currentTarget,()=>{delete L.ctrl;Store.save();flash('Contrôle annulé : le salon '+court(o)+' est à recontrôler.');vLs();});
     if($('bFinX'))$('bFinX').onclick=e=>sur(e.currentTarget,()=>{delete L.fin;Store.save();flash('Livraison annulée : le salon '+court(o)+' redevient « à livrer ».');vLs();});
     if($('bOutT'))$('bOutT').onclick=e=>sur(e.currentTarget,()=>{if(t)t.orderIds=t.orderIds.filter(id=>id!==o.id);livOut(o);Store.save();flash('Salon '+court(o)+' retiré de la tournée : il revient dans les salons prêts.');go('tour');});}}
