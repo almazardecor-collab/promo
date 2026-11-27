@@ -13141,8 +13141,8 @@ function vDevis(){if(isOp()||isLiv())return go(home());
   const L=Array.isArray(DEV)?DEV.filter(d=>!q||[d.nom,d.tel,devTel(d.tel),d.ville,d.code].join(' ').toLowerCase().includes(q)):[];
   const body=DEV===null?'<p class="muted">Chargement des devis…</p>':!Array.isArray(DEV)?`<div class="msg err">Impossible de charger les devis${DEV.err==='auth'?' : reconnecte-toi.':' : vérifie la connexion.'}</div>`:
    (L.length?L.map(d=>{const o=devOrder(d),c=d.commande||{},lg=c.lg||{};const cot=[lg.fond,lg.rg,lg.rd].filter(x=>x!==''&&x!=null).join(' / '),op=devOpt(c),tel=devTel(d.tel);
-     const ok=d.appel==='oui',noCall=d.appel==='non'||d.appel==='attente';
-     return `<div class="card" style="padding:12px;margin-bottom:8px${ok?';border:2px solid #1f8b4c;background:#e7f5ec':''}" data-dc="${esc(d.id)}">${ok?'<div style="color:#1f8b4c;font-weight:700;margin-bottom:4px">🟢 A ACCEPTÉ L’APPEL — à appeler</div>':''}
+     const noCall=d.appel==='non'||d.appel==='attente';
+     return `<div class="card" style="padding:12px;margin-bottom:8px" data-dc="${esc(d.id)}">
       <div class="l1" style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>${esc(d.nom||'Client sans nom')}</b><span>${d.test?'<span class="tag exp">Test</span> ':''}${o?`<span class="tag conf">${esc(o.code)}</span>`:'<span class="tag res">Devis</span>'}</span></div>
       <div class="muted" style="margin:4px 0">${esc([tel,d.ville].filter(Boolean).join(' · ')||'Sans téléphone')} · ${fdate(d.maj||d.at)}</div>
       <div class="muted" style="margin:4px 0;font-size:.85rem">${esc(d.code||'')} · ${d.par?'fait par '+esc(d.parNom||'un vendeur'):'Robot WhatsApp'}${d.maj&&!d.par?' · modifié':''}</div>
